@@ -7,7 +7,7 @@ using System.Net;
 using System.Security.Claims;
 using WebPush;
 
-namespace ReportingPortalServer.Services
+namespace Back.Services
 {
     public interface INotificationService
     {

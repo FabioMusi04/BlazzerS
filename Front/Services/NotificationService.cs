@@ -1,7 +1,7 @@
 ﻿using Models.http;
 using System.Net.Http.Json;
 
-namespace ReportingPortal.Services
+namespace Front.Services
 {
     public class NotificationService(IHttpClientFactory factory)
     {

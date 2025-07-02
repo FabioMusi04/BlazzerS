@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Models;
 
-namespace ReportingPortalServer.Services
+namespace Back.Services
 {
     public class ApplicationDbContext(DbContextOptions options) : DbContext(options)
     {

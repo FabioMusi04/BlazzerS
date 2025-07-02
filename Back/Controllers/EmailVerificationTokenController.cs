@@ -1,9 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Models;
 using Models.http;
-using ReportingPortalServer.Services;
+using Back.Services;
 
-namespace ReportingPortalServer.Controllers
+namespace Back.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]

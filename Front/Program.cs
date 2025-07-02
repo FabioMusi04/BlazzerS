@@ -1,10 +1,10 @@
 using Blazored.LocalStorage;
+using Front.Services;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-using ReportingPortal.Services;
 
-namespace ReportingPortal
+namespace Front
 {
     public class Program
     {

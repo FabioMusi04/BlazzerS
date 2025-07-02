@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Models;
 using Models.enums;
-namespace ReportingPortalServer.Services.Jobs
+namespace Back.Services.Jobs
 {
     public class NotificationPushSender(IServiceScopeFactory scopeFactory, ILogger<NotificationPushSender> logger) : IScheduledJob
     {

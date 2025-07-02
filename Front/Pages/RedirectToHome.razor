@@ -1,21 +1,25 @@
 @page "/"
 @inject NavigationManager Navigation
 
-<div class="relative min-h-screen bg-cover bg-center text-white" style="background-image: url(/background.png)">
-    <div class="absolute inset-0" style="background-color: rgba(0, 0, 0, 0.8); z-index: 10;"></div>
-    <div class="relative z-20 flex flex-col items-center justify-center min-h-screen space-y-6 px-4">
-        <img src="/logo.png" alt="Fixaroo Logo" class="w-20 h-20" />
+<div class="relative min-h-screen bg-cover bg-center" style="background-image: url(/background.png);">
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
 
-        <h1 class="text-4xl font-bold">Fixaroo</h1>
-        <p class="text-lg">Tag the issue, get it fixed!</p>
+    <div class="relative z-10 flex items-center justify-center min-h-screen px-4">
+        <div class="bg-white/60 border border-white/20 backdrop-blur-lg shadow-xl rounded-2xl p-8 w-full max-w-md text-white space-y-6">
+            <div class="flex flex-col items-center space-y-2">
+                <img src="/logo.png" alt="Fixaroo Logo" class="w-20 h-20" />
+                <h1 class="text-4xl font-bold tracking-tight">Fixaroo</h1>
+                <p class="text-base text-white/80">Tag the issue, get it fixed!</p>
+            </div>
 
-        <div class="space-y-4 w-full max-w-xs">
-            <button @onclick="GoToLogin" class="w-full py-2 rounded-full bg-[#66c61c] text-white font-semibold hover:bg-[#57ad18]">Login</button>
-            <button @onclick="GoToRegister" class="w-full py-2 rounded-full bg-[#66c61c] text-white font-semibold hover:bg-[#57ad18]">Register</button>
+            <div class="space-y-4">
+                <button @onclick="GoToLogin" class="w-full py-2 rounded-full bg-gradient-to-r from-green-400 to-blue-500 font-semibold hover:opacity-90 transition">Login</button>
+                <button @onclick="GoToRegister" class="w-full py-2 rounded-full bg-gradient-to-r from-green-400 to-blue-500 font-semibold hover:opacity-90 transition">Register</button>
 
-            <div class="flex justify-between">
-                <button @onclick="GoToUser" class="px-6 py-2 rounded-full bg-[#66c61c] text-white font-semibold hover:bg-[#57ad18]">Enter</button>
-                <button @onclick="GoToAdmin" class="px-6 py-2 rounded-full bg-white text-[#66c61c] font-semibold hover:bg-gray-100">Admin</button>
+                <div class="flex justify-between pt-2">
+                    <button @onclick="GoToUser" class="w-1/2 mr-2 py-2 rounded-full bg-white/80 text-gray-800 font-semibold hover:bg-white transition">Enter</button>
+                    <button @onclick="GoToAdmin" class="w-1/2 ml-2 py-2 rounded-full border border-white/30 text-white font-semibold hover:bg-white/10 transition">Admin</button>
+                </div>
             </div>
         </div>
     </div>

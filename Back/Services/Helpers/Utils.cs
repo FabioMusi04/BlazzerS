@@ -1,9 +1,9 @@
 ﻿using Models;
 using Models.enums;
 using Models.http;
-using ReportingPortalServer.Services.AppwriteIO;
+using Back.Services.AppwriteIO;
 
-namespace ReportingPortalServer.Services.Helpers
+namespace Back.Services.Helpers
 {
     public static class Utils
     {

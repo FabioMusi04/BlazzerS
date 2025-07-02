@@ -5,7 +5,7 @@ using Microsoft.Extensions.Options;
 using File = System.IO.File;
 using FilePath = System.IO.File;
 
-namespace ReportingPortalServer.Services.AppwriteIO
+namespace Back.Services.AppwriteIO
 {
     public interface IAppwriteClient
     {

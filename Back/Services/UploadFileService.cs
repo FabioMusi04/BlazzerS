@@ -2,10 +2,10 @@
 using Microsoft.EntityFrameworkCore;
 using Models;
 using Models.http;
-using ReportingPortalServer.Services.AppwriteIO;
-using ReportingPortalServer.Services.Helpers;
+using Back.Services.AppwriteIO;
+using Back.Services.Helpers;
 
-namespace ReportingPortalServer.Services
+namespace Back.Services
 {
     public interface IUploadFileService
     {

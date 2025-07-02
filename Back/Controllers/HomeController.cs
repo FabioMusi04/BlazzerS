@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using ReportingPortalServer.Services;
+using Back.Services;
 
-namespace ReportingPortalServer.Controllers
+namespace Back.Controllers
 {
     [ApiController]
     [Route("/")]

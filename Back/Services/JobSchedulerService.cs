@@ -1,6 +1,6 @@
 ﻿using Models;
 
-namespace ReportingPortalServer.Services
+namespace Back.Services
 {
     public class JobSchedulerService(IServiceProvider serviceProvider, ILogger<JobSchedulerService> logger) : BackgroundService
     {

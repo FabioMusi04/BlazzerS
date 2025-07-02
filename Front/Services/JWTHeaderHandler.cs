@@ -1,7 +1,7 @@
 ﻿using Blazored.LocalStorage;
 using System.Net.Http.Headers;
 
-namespace ReportingPortal.Services
+namespace Front.Services
 {
     public class AuthHeaderHandler(ILocalStorageService localStorage) : DelegatingHandler
     {

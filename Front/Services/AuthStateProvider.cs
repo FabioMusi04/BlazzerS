@@ -4,7 +4,7 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 
-namespace ReportingPortal.Services
+namespace Front.Services
 {
     public class CustomAuthStateProvider(ILocalStorageService localStorage) : AuthenticationStateProvider
     {

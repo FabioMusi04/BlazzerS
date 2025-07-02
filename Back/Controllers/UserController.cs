@@ -2,10 +2,10 @@
 using Models;
 using Models.front;
 using Models.http;
-using ReportingPortalServer.Services;
-using ReportingPortalServer.Services.Helpers;
+using Back.Services;
+using Back.Services.Helpers;
 
-namespace ReportingPortalServer.Controllers
+namespace Back.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]

@@ -2,7 +2,7 @@
 using System.Net;
 using System.Net.Mail;
 
-namespace ReportingPortalServer.Services
+namespace Back.Services
 {
     public class EmailSettings
     {

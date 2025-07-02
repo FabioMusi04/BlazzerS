@@ -1,11 +1,11 @@
 ﻿using Microsoft.IdentityModel.Tokens;
 using Models;
 using Models.http;
-using ReportingPortalServer.Services.Helpers;
+using Back.Services.Helpers;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 
-namespace ReportingPortalServer.Services
+namespace Back.Services
 {
     public interface IAuthService
     {

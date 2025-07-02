@@ -1,10 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Models.http;
-using ReportingPortalServer.Services;
-using ReportingPortalServer.Services.AppwriteIO;
-using ReportingPortalServer.Services.Helpers;
+using Back.Services;
+using Back.Services.AppwriteIO;
+using Back.Services.Helpers;
 
-namespace ReportingPortalServer.Controllers
+namespace Back.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]

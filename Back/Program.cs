@@ -1,11 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using Models;
-using ReportingPortalServer.Services;
-using ReportingPortalServer.Services.AppwriteIO;
-using ReportingPortalServer.Services.Jobs;
+using Back.Services;
+using Back.Services.AppwriteIO;
+using Back.Services.Jobs;
 
-namespace ReportingPortalServer
+namespace Back
 {
     public class Program
     {

@@ -25,7 +25,7 @@ window.registerPushNotifications = async (userEmail) => {
         const p256dh = arrayBufferToBase64(subscription.getKey('p256dh'));
         const auth = arrayBufferToBase64(subscription.getKey('auth'));
 
-        await DotNet.invokeMethodAsync("ReportingPortal", "AutoSubscribe", userEmail, endpoint, p256dh, auth);
+        await DotNet.invokeMethodAsync("Front", "AutoSubscribe", userEmail, endpoint, p256dh, auth);
         console.log("Push subscription sent successfully.");
     } catch (err) {
         console.error("Push notification setup failed:", err);
