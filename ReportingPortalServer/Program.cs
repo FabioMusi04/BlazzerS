@@ -27,7 +27,6 @@ namespace ReportingPortalServer
                 });
             });
 
-
             builder.Services.AddAuthorization();
             builder.Services.AddControllers();
 
@@ -47,20 +46,19 @@ namespace ReportingPortalServer
                 });
 
                 c.AddSecurityRequirement(new OpenApiSecurityRequirement {
-                    {
-                        new OpenApiSecurityScheme {
-                            Reference = new OpenApiReference {
-                                Type = ReferenceType.SecurityScheme,
-                                Id = "Bearer"
-                            }
-                        },
-                        Array.Empty<string>()
-                    }});
+                        {
+                            new OpenApiSecurityScheme {
+                                Reference = new OpenApiReference {
+                                    Type = ReferenceType.SecurityScheme,
+                                    Id = "Bearer"
+                                }
+                            },
+                            Array.Empty<string>()
+                        }});
             });
 
-
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"), b => b.UseNetTopologySuite()));
+                options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
             builder.Services.AddOpenApi();
 
@@ -70,31 +68,22 @@ namespace ReportingPortalServer
             builder.Services.AddHostedService<JobSchedulerService>();
             builder.Services.AddSingleton<IAppwriteClient, AppwriteClient>();
             builder.Services.AddSingleton<IUserService, UserService>();
-            builder.Services.AddSingleton<ICategoryService, CategoryService>();
             builder.Services.AddSingleton<IUploadFileService, UploadFileService>();
-            builder.Services.AddSingleton<IReportReplyService, ReportReplyService>();
-            builder.Services.AddScoped<IReportService, ReportService>();
             builder.Services.AddScoped<IEmailService, EmailService>();
             builder.Services.AddScoped<INotificationService, NotificationService>();
             builder.Services.AddScoped<ITokenVerificationService, TokenVerificationService>();
             builder.Services.AddScoped<IAuthService, AuthService>();
-            builder.Services.AddScoped<IReportReplyService, ReportReplyService>();
 
             builder.Services.AddScoped<IScheduledJob, NotificationEmailSender>();
             builder.Services.AddScoped<IScheduledJob, NotificationPushSender>();
-            builder.Services.AddScoped<IScheduledJob, PendingReportReminderJob>();
-
 
             var app = builder.Build();
 
             app.UseCors("origins");
 
-            //if (app.Environment.IsDevelopment())
-            //{
             app.MapOpenApi();
             app.UseSwagger();
             app.UseSwaggerUI();
-            //}
 
             app.UseHttpsRedirection();
 

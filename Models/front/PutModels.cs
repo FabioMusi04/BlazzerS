@@ -21,35 +21,4 @@ namespace Models.front
 
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     }
-
-    public class NotificationPutModel
-    {
-        public NotificationStatusEnum Status { get; set; } = NotificationStatusEnum.Unread;
-        public DateTime? ReadAt { get; set; }
-        public DateTime? DismissedAt { get; set; }
-        public bool? EmailSent { get; set; }
-        public DateTime? EmailSentAt { get; set; }
-        public bool? PushSent { get; set; }
-        public DateTime? PushSentAt { get; set; }
-    }
-
-    public class DailyReportCount
-    {
-        public DateTime Date { get; set; }
-        public int Count { get; set; }
-
-    }
-
-    public class ReportsPerCategory
-    {
-        public string Category { get; set; } = null!;
-        public int Count { get; set; }
-    }
-
-    public class TopUserReportCount
-    {
-        public string UserId { get; set; } = string.Empty;
-        public int Count { get; set; }
-    }
-
 }

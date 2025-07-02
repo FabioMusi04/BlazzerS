@@ -6,14 +6,6 @@
         Admin
     }
 
-    public enum ReportStatusEnum
-    {
-        Pending,
-        InProgress,
-        Resolved,
-        Rejected
-    }
-
     public enum NotificationStatusEnum
     {
         Unread,

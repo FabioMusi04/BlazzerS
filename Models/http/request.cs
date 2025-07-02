@@ -9,17 +9,6 @@ namespace Models.http
 
     }
 
-    public class ClusterRequest : Request
-    {
-        public double MinLat { get; set; }
-        public double MinLng { get; set; }
-        public double MaxLat { get; set; }
-        public double MaxLng { get; set; }
-        public int Zoom { get; set; }
-        public int? CategoryId { get; set; } = null;
-        public ReportStatusEnum? Status { get; set; } = null;
-    }
-
     public class PagedRequest
     {
         [Range(1, int.MaxValue)]
@@ -61,19 +50,6 @@ namespace Models.http
         [Required]
         [StringLength(100, ErrorMessage = "Surname cannot be longer than 100 characters.")]
         public string Surname { get; set; } = default!;
-    }
-
-    public class ReportRequest : Request
-    {
-        [Required]
-        public string Title { get; set; } = default!;
-        [Required]
-        public string Description { get; set; } = default!;
-        [Required]
-        public int CategoryId { get; set; } = default!;
-        [Required]
-        public string Location { get; set; } = default!;
-        public string LocationDetail { get; set; } = default!;
     }
 
     public class NotificationConnectRequest : Request
@@ -129,19 +105,6 @@ namespace Models.http
         public NotificationChannelEnum Channel { get; set; } = NotificationChannelEnum.App;
     }
 
-    public class CreateReportRequest
-    {
-        public string? Id { get; set; } = null;
-        public string Title { get; set; } = string.Empty;
-        public string Description { get; set; } = string.Empty;
-        public string CategoryId { get; set; } = string.Empty;
-        public string Location { get; set; } = string.Empty;
-        public string? LocationDetail { get; set; } = string.Empty;
-        public string Latitude { get; set; } = string.Empty;
-        public string Longitude { get; set; } = string.Empty;
-        public IFormFile? File { get; set; } = default!;
-    }
-
     public class UploadFileRequest
     {
         public IFormFile? File { get; set; } = default!;
@@ -154,12 +117,6 @@ namespace Models.http
         public string Message { get; set; } = default!;
     }
 
-    public class ReportsPaginatedRequest : PagedRequest
-    {
-        public ReportStatusEnum? Status { get; set; } = default!;
-        public bool IsPersonal { get; set; } = false;
-    }
-
     public class UsersPaginatedRequest : PagedRequest
     {
         public UserRoleEnum? Role { get; set; } = default!;
@@ -169,30 +126,5 @@ namespace Models.http
     public class NotificationsPaginatedRequest : PagedRequest
     {
         public NotificationStatusEnum? Status { get; set; } = default!;
-    }
-
-    public class CategoriesPaginatedRequest : PagedRequest
-    {
-
-    }
-
-    public class CreateReportReplyRequest
-    {
-        public int Id { get; set; }
-        public int ReportId { get; set; }
-        public int UserId { get; set; }
-        public string Message { get; set; } = string.Empty;
-        public ReportStatusEnum? NewStatus { get; set; } = null;
-        public List<IFormFile>? Attachments { get; set; } = default!;
-    }
-
-    public class UpdateReportReplyRequest : Request
-    {
-        public string Message { get; set; } = string.Empty;
-    }
-
-    public class ReportsReplyPaginatedRequest : PagedRequest
-    {
-        public int ReportId { get; set; }
     }
 }

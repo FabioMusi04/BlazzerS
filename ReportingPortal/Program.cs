@@ -37,9 +37,6 @@ namespace ReportingPortal
             builder.Services.AddScoped<EmailVerificationTokenService>();
             builder.Services.AddScoped<AuthService>();
             builder.Services.AddScoped<UserService>();
-            builder.Services.AddScoped<CategoryService>();
-            builder.Services.AddScoped<ReportReplyService>();
-            builder.Services.AddScoped<ReportService>();
             builder.Services.AddScoped<NotificationService>();
 
             builder.Services.AddAuthorizationCore();
