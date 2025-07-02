@@ -1,0 +1,519 @@
+﻿@page "/report/{ReportId:int}"
+@attribute [Authorize]
+
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@inject ReportService ReportService
+@inject ReportReplyService ReportReplyService
+@inject UserService UserService
+
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using System.Globalization
+
+<Alert AlertData="@AlertData" OnDismissed="@(() => AlertData.IsVisible = false)" />
+<Alert AlertData="@AlertData2" OnDismissed="@(() => AlertData2.IsVisible = false)" />
+<div class="max-w-screen-xl mx-auto p-6 space-y-8 print:p-0 print:bg-white">
+    <div class="flex justify-between items-center border-b pb-4">
+        <h2 class="text-3xl font-bold text-gray-800">📝 Report Details</h2>
+        <button class="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-lg shadow"
+                @onclick="ExportToPdf" disabled="@IsLoading">
+            <i class="fa-solid fa-file-pdf mr-2"></i> Export PDF
+        </button>
+    </div>
+
+    @if (IsLoading)
+    {
+        <p>Loading...</p>
+    }
+    else if (Report == null)
+    {
+        <p class="text-red-600">Error: report not found.</p>
+    }
+    else
+    {
+        <div class="bg-white p-5 rounded-xl shadow-md">
+            <div class="w-full h-64 rounded-lg overflow-hidden">
+                <div id="mapPos" class="w-full h-full"></div>
+            </div>
+        </div>
+        <div class="grid lg:grid-cols-3 gap-8">
+            <div class="space-y-6">
+                <div class="bg-white p-5 rounded-xl shadow-md space-y-3">
+                    <div><span class="text-gray-500 font-medium">Type:</span> @(Report.Category?.Name ?? "N/A")</div>
+                    <div><span class="text-gray-500 font-medium">Location:</span> @((Report.Location?.Length ?? 0) > 60 ? Report.Location.Substring(0, 60) + "..." : Report.Location)</div>
+                    <div class="text-xs text-gray-400">@Report.LocationDetail</div>
+                    <div><span class="text-gray-500 font-medium">Reported by:</span> @(Report.User?.Email ?? "N/A")</div>
+                    <div><span class="text-gray-500 font-medium">Date:</span> @Report.CreatedAt.ToString("d MMM yyyy", CultureInfo.GetCultureInfo("en-US"))</div>
+                    <div><span class="text-gray-500 font-medium">Status:</span> <span class="font-semibold text-sm status-@Report.Status">@Report.Status</span></div>
+                </div>
+
+                @if (CurrentUser?.Id == Report.UserId || CurrentUser?.Role == UserRoleEnum.Admin) {
+                <div class="bg-white p-5 rounded-xl shadow-md space-y-4">
+                    <h3 class="text-lg font-semibold text-gray-700">Reply</h3>
+                    <textarea class="w-full border border-gray-300 rounded-md p-2 text-sm"
+                              rows="4" @bind="NewMessage" placeholder="Write a reply..."></textarea>
+
+                    <label class="inline-block bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-full text-sm cursor-pointer">
+                        📁 Choose files (max 3)
+                        <InputFile class="hidden" OnChange="HandleFileSelected" multiple />
+                    </label>
+
+                    @if (UploadErrors.Count > 0)
+                    {
+                        <ul class="text-red-500 text-sm mt-1">
+                            @foreach (var error in UploadErrors)
+                            {
+                                <li>@error</li>
+                            }
+                        </ul>
+                    }
+
+                    @if (UploadedImages.Count > 0)
+                    {
+                        <ul class="mt-2 text-sm text-gray-600 space-y-1">
+                            @foreach (var file in UploadedImages)
+                            {
+                                <li class="flex justify-between items-center">
+                                    📎 @file.Name
+                                    <button type="button" class="text-red-500 hover:text-red-700" @onclick="() => RemoveFile(file)">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </li>
+                            }
+                        </ul>
+                    }
+
+
+                    <div class="flex items-center gap-3">
+                        @if (CurrentUser?.Role == UserRoleEnum.Admin)
+                        {
+                            <select class="border border-gray-300 rounded-md px-3 py-1 text-sm" @bind="SelectedStatus">
+                                <option value="">Update status (optional)</option>
+                                @foreach (var status in Enum.GetValues<ReportStatusEnum>())
+                                {
+                                    <option value="@status">@status</option>
+                                }
+                            </select>
+                        }
+                        <button class="bg-green-600 text-white px-4 py-2 rounded-full text-sm hover:bg-green-700"
+                                @onclick="SubmitReply"
+                                disabled="@string.IsNullOrWhiteSpace(NewMessage)">
+                            Send
+                        </button>
+                    </div>
+
+                </div>
+                }
+            </div>
+            
+
+            <div class="lg:col-span-2">
+                <div class="bg-white p-5 rounded-xl shadow-md">
+                    <h3 class="text-xl font-medium text-gray-800 mb-4">Update Timeline</h3>
+
+                    @if (Timeline == null || Timeline.Count == 0)
+                    {
+                        <p class="text-gray-500">No replies yet.</p>
+                    }
+                    else
+                    {
+                        <ul class="space-y-4 max-h-[600px] overflow-y-auto pr-2">
+                            @foreach (var reply in Timeline.OrderByDescending(t => t.SentAt))
+                            {
+                                <li class="bg-gray-50 border-l-4 border-green-500 p-4 rounded-lg">
+                                    @if (EditingReplyId == reply.Id)
+                                    {
+                                        <textarea class="w-full text-sm border rounded p-2"
+                                                  rows="3" @bind="EditingMessage"></textarea>
+                                        <div class="flex gap-2 mt-2">
+                                            <button class="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
+                                                    @onclick="() => UpdateReply(reply.Id)">
+                                                Save
+                                            </button>
+                                            <button class="text-gray-600 hover:underline" @onclick="CancelEdit">Cancel</button>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="flex justify-between items-start">
+                                            <div class="text-sm">
+                                                <strong>@(reply.User?.Role == UserRoleEnum.User ? "Citizen" : "Operator"):</strong>
+                                                <span>@reply.Message</span>
+                                            </div>
+                                            @if (CurrentUser?.Role == UserRoleEnum.Admin)
+                                            {
+                                                <div class="flex gap-2">
+                                                    <button class="text-blue-500 hover:underline text-sm" @onclick="() => StartEditingReply(reply)">Edit</button>
+                                                    <button class="text-red-500 hover:underline text-sm" @onclick="() => ConfirmDeleteReply(reply.Id)">Delete</button>
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+
+                                    @if (reply.Attachment1 != null || reply.Attachment2 != null || reply.Attachment3 != null)
+                                    {
+                                        <div class="flex flex-wrap gap-2 mt-2">
+                                            @if (reply.Attachment1 != null)
+                                            {
+                                                <img src="@reply.Attachment1.FilePath" alt="attachment1"
+                                                     class="w-24 h-24 object-cover rounded border cursor-pointer hover:opacity-80 transition"
+                                                     @onclick="@(() => ShowFullImage(reply.Attachment1.FilePath))" />
+                                            }
+                                            @if (reply.Attachment2 != null)
+                                            {
+                                                <img src="@reply.Attachment2.FilePath" alt="attachment2"
+                                                     class="w-24 h-24 object-cover rounded border cursor-pointer hover:opacity-80 transition"
+                                                     @onclick="@(() => ShowFullImage(reply.Attachment2.FilePath))" />
+                                            }
+                                            @if (reply.Attachment3 != null)
+                                            {
+                                                <img src="@reply.Attachment3.FilePath" alt="attachment3"
+                                                     class="w-24 h-24 object-cover rounded border cursor-pointer hover:opacity-80 transition"
+                                                     @onclick="@(() => ShowFullImage(reply.Attachment3.FilePath))" />
+                                            }
+                                        </div>
+                                    }
+
+                                    <div class="text-xs text-gray-500 mt-1">
+                                        @reply.SentAt.ToLocalTime().ToString("g", CultureInfo.GetCultureInfo("en-US"))
+                                        @if (reply?.NewStatus != null)
+                                        {
+                                            <span class="ml-2 italic">→ Status: <span class="status-@reply.NewStatus">@reply.NewStatus</span></span>
+                                        }
+                                    </div>
+                                </li>
+                            }
+                        </ul>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(FullImageUrl))
+    {
+        <div class="fixed inset-0 bg-black/70 flex justify-center items-center z-1001" @onclick="CloseFullImage">
+            <img src="@FullImageUrl" class="max-w-full max-h-full rounded shadow-xl border-4 border-white" />
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public int ReportId { get; set; }
+    private ReportDto? Report;
+    private List<ReportReply> Timeline = new();
+    private User? CurrentUser;
+    private string NewMessage = "";
+    private ReportStatusEnum? SelectedStatus;
+    private bool IsLoading = true;
+    private List<IBrowserFile> UploadedImages = new();
+    private List<string> UploadErrors = new();
+    private int? EditingReplyId = null;
+    private string EditingMessage = "";
+    private AlertModel AlertData = new AlertModel
+    {
+        IsVisible = false,
+        Style = AlertTypeEnum.Information,
+        Message = "",
+        Title = "",
+        Position = AlertStylePositionEnum.BottomRight,
+    };
+    private AlertModel AlertData2 = new AlertModel
+    {
+        IsVisible = false,
+        Style = AlertTypeEnum.Danger,
+        Message = "",
+        Title = "",
+        Position = AlertStylePositionEnum.BottomRight,
+    };
+
+    private ReportsReplyPaginatedRequest reportsReplyPaginatedRequest = new()
+    {
+        Page = 1,
+        PageSize = 30,
+        ReportId = 0
+    };
+
+    private string? FullImageUrl;
+
+    private void ShowFullImage(string url) => FullImageUrl = url;
+
+    private void CloseFullImage() => FullImageUrl = null;
+
+    private bool _mapInitialized = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var user = await UserService.GetMeAsync();
+            if (user.StatusCode < 200 || user.StatusCode >= 300)
+            {
+                Navigation.NavigateTo("/login");
+                return;
+            }
+
+            CurrentUser = user.User;
+            Report = await LoadReportAsync(ReportId);
+
+            if (Report != null)
+            {
+                reportsReplyPaginatedRequest.ReportId = ReportId;
+                Timeline = await LoadTimelineAsync();
+            }
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        Report = await LoadReportAsync(ReportId);
+
+        if (firstRender && !_mapInitialized)
+        {
+            _mapInitialized = true;
+            await Task.Delay(1000);
+            await JSRuntime.InvokeVoidAsync("MAP.initMapSingle", Report.Latitude, Report.Longitude);
+        }
+    }
+
+    private async Task ExportToPdf() => await JSRuntime.InvokeVoidAsync("window.print");
+
+    private async Task SubmitReply()
+    {
+        if (string.IsNullOrWhiteSpace(NewMessage) || CurrentUser == null || Report == null)
+        {
+            AlertData2 = new AlertModel
+            {
+                IsVisible = true,
+                Style = AlertTypeEnum.Danger,
+                Message = "Please fill in all required fields.",
+                Title = "Error",
+                Position = AlertStylePositionEnum.BottomRight,
+            };
+            return;
+        }
+
+        try
+        {
+            MultipartFormDataContent formData = new()
+            {
+                { new StringContent(ReportId.ToString()), "ReportId" },
+                { new StringContent(CurrentUser.Id.ToString()), "UserId" },
+                { new StringContent(NewMessage), "Message" }
+            };
+
+            if (SelectedStatus != null)
+                formData.Add(new StringContent(SelectedStatus.ToString()!), "NewStatus");
+
+            foreach (var file in UploadedImages)
+            {
+                var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024); // 10 MB max
+                formData.Add(new StreamContent(stream), "Attachments", file.Name);
+            }
+
+            var result = await ReportReplyService.CreateAsync(formData);
+            if (result.StatusCode >= 200 && result.StatusCode < 300)
+            {
+                NewMessage = "";
+                UploadedImages.Clear();
+                SelectedStatus = null;
+                Timeline = await LoadTimelineAsync();
+                Report = await LoadReportAsync(ReportId);
+
+                AlertData = new AlertModel
+                {
+                    IsVisible = true,
+                    Style = AlertTypeEnum.Information,
+                    Message = "Reply sent successfully!",
+                    Title = "Success",
+                    Position = AlertStylePositionEnum.BottomRight,
+                };
+            }
+            else
+            {
+                AlertData2 = new AlertModel
+                {
+                    IsVisible = true,
+                    Style = AlertTypeEnum.Danger,
+                    Message = "Failed to send reply.",
+                    Title = "Error",
+                    Position = AlertStylePositionEnum.BottomRight,
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            AlertData2 = new AlertModel
+            {
+                IsVisible = true,
+                Style = AlertTypeEnum.Danger,
+                Message = $"Error: {ex.Message}",
+                Title = "Exception",
+                Position = AlertStylePositionEnum.BottomRight,
+            };
+        }
+    }
+
+    private void HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        var files = e.GetMultipleFiles().ToList();
+        UploadErrors.Clear();
+
+        foreach (var file in files)
+        {
+            if (UploadedImages.Count >= 3)
+            {
+                AlertData2 = new AlertModel
+                {
+                    IsVisible = true,
+                    Style = AlertTypeEnum.Danger,
+                    Message = "Maximum 3 files allowed.",
+                    Title = "Error",
+                    Position = AlertStylePositionEnum.BottomRight,
+                };
+                break;
+            }
+
+            if (!file.ContentType.StartsWith("image/"))
+            {
+                UploadErrors.Add($"'{file.Name}' is not a valid image.");
+                continue;
+            }
+
+            if (file.Size > 5 * 1024 * 1024)
+            {
+                UploadErrors.Add($"'{file.Name}' exceeds 5MB.");
+                continue;
+            }
+
+            UploadedImages.Add(file);
+        }
+    }
+
+    private void RemoveFile(IBrowserFile file) => UploadedImages.Remove(file);
+
+    private async Task<ReportDto?> LoadReportAsync(int id)
+    {
+        var result = await ReportService.GetByIdAsync(id);
+        return result.StatusCode >= 200 && result.StatusCode < 300 ? result.Report : null;
+    }
+
+    private async Task<List<ReportReply>> LoadTimelineAsync()
+    {
+        var result = await ReportReplyService.GetAllAsync(reportsReplyPaginatedRequest);
+        return result.StatusCode >= 200 && result.StatusCode < 300 ? result.Items ?? new() : new();
+    }
+
+    private void StartEditingReply(ReportReply reply)
+    {
+        EditingReplyId = reply.Id;
+        EditingMessage = reply.Message;
+    }
+
+    private void CancelEdit()
+    {
+        EditingReplyId = null;
+        EditingMessage = "";
+    }
+
+    private async Task UpdateReply(int replyId)
+    {
+        if (string.IsNullOrWhiteSpace(EditingMessage))
+        {
+            AlertData2 = new AlertModel
+            {
+                IsVisible = true,
+                Style = AlertTypeEnum.Danger,
+                Message = "Message cannot be empty.",
+                Title = "Error",
+                Position = AlertStylePositionEnum.BottomRight,
+            };
+            return;
+        }
+
+        MultipartFormDataContent form = new()
+        {
+            { new StringContent(EditingMessage), "Message" }
+        };
+
+        var result = await ReportReplyService.UpdateAsync(replyId, form);
+        if (result.StatusCode >= 200 && result.StatusCode < 300)
+        {
+            EditingReplyId = null;
+            EditingMessage = "";
+            Timeline = await LoadTimelineAsync();
+
+            AlertData = new AlertModel
+            {
+                IsVisible = true,
+                Style = AlertTypeEnum.Information,
+                Message = "Reply updated successfully!",
+                Title = "Success",
+                Position = AlertStylePositionEnum.BottomRight,
+            };
+        }
+        else
+        {
+            AlertData2 = new AlertModel
+            {
+                IsVisible = true,
+                Style = AlertTypeEnum.Danger,
+                Message = "Failed to update reply.",
+                Title = "Error",
+                Position = AlertStylePositionEnum.BottomRight,
+            };
+        }
+    }
+
+    private void ConfirmDeleteReply(int replyId)
+    {
+        AlertData = new AlertModel
+        {
+            IsVisible = true,
+            Style = AlertTypeEnum.Warning,
+            Message = "Are you sure you want to delete this reply?",
+            Title = "Delete Reply",
+            Position = AlertStylePositionEnum.Center,
+            HasActions = true,
+            OkText = "Delete",
+            CancelText = "Cancel",
+            OnOk = EventCallback.Factory.Create(this, () => DeleteReportReply(replyId)),
+            OnCancel = EventCallback.Factory.Create(this, () => AlertData.IsVisible = false)
+        };
+    }
+
+    private async Task DeleteReportReply(int replyId)
+    {
+        var response = await ReportReplyService.DeleteAsync(replyId);
+
+        if (response.StatusCode >= 200 && response.StatusCode < 300)
+        {
+            AlertData2 = new AlertModel
+            {
+                IsVisible = true,
+                Style = AlertTypeEnum.Information,
+                Message = "Delete report reply",
+                Title = "Success",
+                Position = AlertStylePositionEnum.BottomRight
+            };
+
+            Timeline = await LoadTimelineAsync();
+        }
+        else
+        {
+            AlertData2 = new AlertModel
+            {
+                IsVisible = true,
+                Style = AlertTypeEnum.Danger,
+                Message = response.Message ?? "Failed to delete report reply.",
+                Title = "Error",
+                Position = AlertStylePositionEnum.BottomRight
+            };
+        }
+    }
+}

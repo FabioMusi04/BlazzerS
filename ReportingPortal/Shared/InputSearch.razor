@@ -1,0 +1,50 @@
+<div class="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+    @if (ShowSearch)
+    {
+        <div class="flex items-center gap-2 w-full sm:w-auto">
+            <input @bind="CurrentSearchText" @bind:event="oninput"
+                   class="flex-1 sm:w-48 px-4 py-2 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#66c61c] transition"
+                   placeholder="Search ..." />
+            <button type="button"
+                    class="w-10 h-10 flex items-center justify-center rounded-full bg-gray-200 hover:bg-gray-300 text-gray-600"
+                    @onclick="HideSearch" title="Close search">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+    }
+    else
+    {
+        <button type="button"
+                class="w-10 h-10 flex items-center justify-center rounded-full bg-[#66c61c] hover:bg-green-600 text-white shadow"
+                @onclick="ShowSearchInput" title="Open search">
+            <i class="fa-solid fa-magnifying-glass"></i>
+        </button>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public string SearchText { get; set; }
+
+    [Parameter]
+    public EventCallback<string> SearchTextChanged { get; set; }
+
+    private bool ShowSearch = false;
+
+    private string CurrentSearchText
+    {
+        get => SearchText;
+        set
+        {
+            if (SearchText != value)
+            {
+                SearchText = value;
+                SearchTextChanged.InvokeAsync(value);
+            }
+        }
+    }
+
+    private void HideSearch() => ShowSearch = false;
+
+    private void ShowSearchInput() => ShowSearch = true;
+}

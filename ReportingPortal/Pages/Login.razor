@@ -1,0 +1,154 @@
+@page "/login"
+
+@using Models.front
+@using Models.http
+@using System.Text.Json
+
+@inject Blazored.LocalStorage.ILocalStorageService localStorage
+@inject AuthService authService
+@inject EmailVerificationTokenService tokenVerificationService
+@inject NavigationManager Navigation
+@inject CustomAuthStateProvider _authStateProvider
+
+<div>
+    <Alert AlertData="@AlertData" OnDismissed="@(() => AlertData.IsVisible = false)" />
+    <Alert AlertData="@AlertData2" OnDismissed="@(() => AlertData2.IsVisible = false)" />
+
+    <LoginForm OnLogin="HandleLogin" />
+</div>
+
+@code {
+
+    private int userId = -1;
+    private AlertModel AlertData = new();
+    private AlertModel AlertData2 = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            string? token = await localStorage.GetItemAsync<string>("token");
+            if (!string.IsNullOrEmpty(token))
+            {
+                string? userJson = await localStorage.GetItemAsync<string>("user");
+                if (!string.IsNullOrEmpty(userJson))
+                {
+                    User? user = JsonSerializer.Deserialize<User>(userJson);
+                    if (user != null)
+                    {
+                        if (user.Role == UserRoleEnum.Admin)
+                        {
+                            Navigation.NavigateTo("/dashboard");
+                        }
+                        else
+                        {
+                            Navigation.NavigateTo("/home");
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private async Task HandleLogin(LoginFormModel model)
+    {
+        LoginResponse result = await authService.LoginAsync(model.Email, model.Password);
+
+        if (result != null && (result.StatusCode >= 200 && result.StatusCode <= 299) && !string.IsNullOrEmpty(result.Token))
+        {
+            AlertData = new AlertModel
+            {
+                IsVisible = true,
+                Style = AlertTypeEnum.Information,
+                Message = "Login successful!",
+                Title = "Welcome",
+                Position = AlertStylePositionEnum.BottomRight,
+            };
+
+            await localStorage.SetItemAsync("token", result.Token);
+            await localStorage.SetItemAsync("user", JsonSerializer.Serialize(result.User));
+
+            ((CustomAuthStateProvider)_authStateProvider).NotifyUserAuthentication(result.Token);
+
+            if (result.User.Role == UserRoleEnum.Admin)
+            {
+                Navigation.NavigateTo("/dashboard");
+            }
+            else
+            {
+                Navigation.NavigateTo("/home");
+            }
+        }
+        else
+        {
+            AlertData = new AlertModel
+            {
+                IsVisible = true,
+                Style = AlertTypeEnum.Danger,
+                Message = result?.Message ?? "Login failed. Please try again.",
+                Title = "Login Error",
+                Position = AlertStylePositionEnum.BottomRight,
+            };
+
+            if (result?.StatusCode == 403 && result.User != null)
+            {
+                userId = result.User.Id;
+
+                AlertData = new AlertModel
+                {
+                    IsVisible = true,
+                    Style = AlertTypeEnum.Information,
+                    Message = "Login successful! Please check your email to confirm your account. If you didn’t receive it, click below to resend.",
+                    Title = "Confirm your email",
+                    Position = AlertStylePositionEnum.Center,
+                    HasActions = true,
+                    OkText = "Resend Email",
+                    CancelText = "Close",
+                    OnOk = EventCallback.Factory.Create(this, ResendVerificationEmail),
+                    OnCancel = EventCallback.Factory.Create(this, () => AlertData2.IsVisible = false)
+                };
+            }
+        }
+    }
+
+    private async Task ResendVerificationEmail()
+    {
+        try
+        {
+            if (userId == -1)
+            {
+                AlertData2 = new AlertModel
+                {
+                    IsVisible = true,
+                    Style = AlertTypeEnum.Danger,
+                    Message = "Cannot resend verification email.",
+                    Title = "Problem",
+                    Position = AlertStylePositionEnum.BottomRight,
+                };
+                return;
+            }
+
+            await tokenVerificationService.RetryVerificationAsync(userId);
+
+            AlertData2 = new AlertModel
+            {
+                IsVisible = true,
+                Style = AlertTypeEnum.Information,
+                Message = "Verification email resent successfully!",
+                Title = "Email Resent",
+                Position = AlertStylePositionEnum.BottomRight,
+            };
+        }
+        catch (Exception ex)
+        {
+            AlertData2 = new AlertModel
+            {
+                IsVisible = true,
+                Style = AlertTypeEnum.Danger,
+                Message = $"Failed to resend verification email: {ex.Message}",
+                Title = "Error",
+                Position = AlertStylePositionEnum.BottomRight,
+            };
+        }
+    }
+}

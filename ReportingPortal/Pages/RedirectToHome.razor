@@ -1,0 +1,29 @@
+@page "/"
+@inject NavigationManager Navigation
+
+<div class="relative min-h-screen bg-cover bg-center text-white" style="background-image: url(/background.png)">
+    <div class="absolute inset-0" style="background-color: rgba(0, 0, 0, 0.8); z-index: 10;"></div>
+    <div class="relative z-20 flex flex-col items-center justify-center min-h-screen space-y-6 px-4">
+        <img src="/logo.png" alt="Fixaroo Logo" class="w-20 h-20" />
+
+        <h1 class="text-4xl font-bold">Fixaroo</h1>
+        <p class="text-lg">Tag the issue, get it fixed!</p>
+
+        <div class="space-y-4 w-full max-w-xs">
+            <button @onclick="GoToLogin" class="w-full py-2 rounded-full bg-[#66c61c] text-white font-semibold hover:bg-[#57ad18]">Login</button>
+            <button @onclick="GoToRegister" class="w-full py-2 rounded-full bg-[#66c61c] text-white font-semibold hover:bg-[#57ad18]">Register</button>
+
+            <div class="flex justify-between">
+                <button @onclick="GoToUser" class="px-6 py-2 rounded-full bg-[#66c61c] text-white font-semibold hover:bg-[#57ad18]">Enter</button>
+                <button @onclick="GoToAdmin" class="px-6 py-2 rounded-full bg-white text-[#66c61c] font-semibold hover:bg-gray-100">Admin</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private void GoToLogin() => Navigation.NavigateTo("/login");
+    private void GoToRegister() => Navigation.NavigateTo("/register");
+    private void GoToUser() => Navigation.NavigateTo("/home");
+    private void GoToAdmin() => Navigation.NavigateTo("/dashboard");
+}

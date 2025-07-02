@@ -1,0 +1,437 @@
+﻿@page "/dashboard/reports"
+@attribute [Authorize(Roles = "Admin")]
+
+@using Microsoft.AspNetCore.Authorization
+@inject ReportService ReportsService
+@inject NavigationManager NavigationManager
+
+<div class="mx-auto px-4 sm:px-8 py-8 bg-white rounded-xl mt-8">
+    <Alert AlertData="@AlertData" OnDismissed="@(() => AlertData.IsVisible = false)" />
+    <Alert AlertData="@AlertData2" OnDismissed="@(() => AlertData2.IsVisible = false)" />
+
+    <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
+        <div class="flex items-center gap-3">
+            <NavLink href="/dashboard" class="flex items-center px-4 py-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-100 transition text-base font-medium shadow-sm" activeClass="">
+                <i class="fa-solid fa-arrow-left mr-2"></i> Back
+            </NavLink>
+            <h2 class="text-2xl md:text-3xl font-bold text-gray-900 ml-2">All Reports</h2>
+        </div>
+    </div>
+
+    <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
+        <div class="flex flex-col w-full sm:w-1/2">
+            <label class="text-sm text-gray-600 mb-1">Search by ...</label>
+            <InputSearch SearchText="@SearchText" SearchTextChanged="OnSearchTextChanged" />
+        </div>
+
+        <div class="flex flex-row sm:justify-end gap-3 items-end w-full sm:w-auto">
+            <div class="flex flex-col w-44">
+                <label class="text-sm text-gray-600 mb-1">Filter by status</label>
+                <select class="border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-[#66c61c] shadow-sm text-sm" @onchange="OnStatusFilterChanged">
+                    <option value="">All Status</option>
+                    @foreach (ReportStatusEnum status in Enum.GetValues<ReportStatusEnum>())
+                    {
+                        <option value="@status.ToString()" selected="@(status == StatusFilter)">
+                            @status
+                        </option>
+                    }
+                </select>
+            </div>
+
+            <div class="flex flex-col w-44">
+                <label class="text-sm text-gray-600 mb-1">Sort reports</label>
+                <select class="border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-[#66c61c] shadow-sm text-sm" @onchange="OnSortChanged">
+                    <option value="CreatedAtDesc">Newest</option>
+                    <option value="CreatedAtAsc">Oldest</option>
+                    <option value="StatusAsc">Status ↑</option>
+                    <option value="StatusDesc">Status ↓</option>
+                </select>
+            </div>
+
+            <div class="flex flex-col">
+                <label class="text-sm text-gray-600 mb-1">Create</label>
+                <button @onclick="ShowCreateReportForm"
+                        class="flex items-center justify-center px-3 py-2 bg-[#66c61c] text-white rounded-lg shadow-sm hover:bg-[#5ab11b] transition text-sm h-[38px]">
+                    <i class="fa-solid fa-plus mr-2"></i> New Report
+                </button>
+            </div>
+        </div>
+    </div>
+
+    @if (IsCreatingReport)
+    {
+        <AddReportForm OnSubmit="@OnReportCreated" OnCancel="@OnCancelCreate" />
+    }
+    @if (IsEditingReport && ReportBeingEdited != null)
+    {
+        <AddReportForm ReportModel="ReportBeingEdited" OnSubmit="@OnReportUpdated" OnCancel="@OnCancelEdit" />
+    }
+
+    <div class="w-full overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
+        <table class="w-full bg-white text-sm md:text-base table-auto">
+            <thead class="bg-gray-50 text-gray-700">
+                <tr>
+                    <th class="text-left px-6 py-4 font-semibold">Type</th>
+                    <th class="text-left px-6 py-4 font-semibold">Title</th>
+                    <th class="text-left px-6 py-4 font-semibold">Location</th>
+                    <th class="text-left px-6 py-4 font-semibold">Reporter</th>
+                    <th class="text-left px-6 py-4 font-semibold">Submitted</th>
+                    <th class="text-left px-6 py-4 font-semibold">Status</th>
+                    <th class="text-center px-6 py-4 font-semibold">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Reports.Any())
+                {
+                    @foreach (var report in Reports)
+                    {
+                        <tr class="border-b last:border-b-0 hover:bg-gray-50 transition">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center gap-2">
+                                    <i class="@report.Category?.IconClass text-xl text-green-600"></i>
+                                    <span class="text-gray-900 font-medium">@report.Category?.Name</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 text-gray-900 font-medium max-w-xs truncate" title="@report.Title">
+                                <span class="cursor-pointer" onclick="navigator.clipboard.writeText('@report.Title')">
+                                    @report.Title
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 text-gray-700 max-w-xs truncate" title="@report.Location">
+                                <span class="cursor-pointer" onclick="navigator.clipboard.writeText('@report.Location')">
+                                    @report.Location
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 text-gray-700">@report.User?.Email</td>
+                            <td class="px-6 py-4 text-gray-700">
+                                @report.CreatedAt.ToString("d MMM yyyy") <br />
+                                <span class="text-xs text-gray-500">@report.CreatedAt.ToString("h:mm tt")</span>
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="font-semibold text-sm text-@report.Status.ToString()">@report.Status</span>
+                            </td>
+                            <td class="text-center px-6 py-4 flex justify-center gap-2">
+                                <button class="w-10 h-10 flex items-center justify-center rounded-full bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-800 transition"
+                                        @onclick="() => GoToReportDetail(report.Id)" title="View Details">
+                                    <i class="fa-solid fa-magnifying-glass"></i>
+                                </button>
+
+                                <button class="w-10 h-10 flex items-center justify-center rounded-full bg-yellow-50 hover:bg-yellow-100 text-yellow-600 hover:text-yellow-800 transition"
+                                        @onclick="() => ShowEditReportForm(report.Id)" title="Edit Report">
+                                    <i class="fa-solid fa-pen"></i>
+                                </button>
+
+                                <button class="w-10 h-10 flex items-center justify-center rounded-full bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-800 transition"
+                                        @onclick="() => ConfirmDeleteReport(report.Id)" title="Delete Report">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </td>
+
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="6" class="text-center text-gray-400 py-8">No reports available</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="flex flex-col md:flex-row justify-between items-center text-base text-gray-600 mt-6 px-2 gap-3">
+        <button @onclick="PreviousPage"
+                class="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 hover:bg-[#66c61c] hover:text-white transition disabled:opacity-50"
+                disabled="@IsFirstPage">
+            <i class="fa-solid fa-chevron-left"></i>
+        </button>
+
+        <span>
+            <span class="font-semibold">@StartIndex–@EndIndex</span> of <span class="font-semibold">@TotalCount</span>
+        </span>
+        <button @onclick="NextPage"
+                class="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 hover:bg-[#66c61c] hover:text-white transition disabled:opacity-50"
+                disabled="@IsLastPage">
+            <i class="fa-solid fa-chevron-right"></i>
+        </button>
+    </div>
+</div>
+
+@code {
+    private List<ReportDto> Reports = new();
+    private string SearchText { get; set; } = string.Empty;
+    private string SortField { get; set; } = "CreatedAt";
+    private bool SortAscending { get; set; } = false;
+    private ReportStatusEnum? StatusFilter = null;
+
+    private int Page { get; set; } = 1;
+    private int PageSize { get; set; } = 5;
+    private int TotalCount { get; set; }
+
+    private int StartIndex => Reports.Count == 0 ? 0 : ((Page - 1) * PageSize) + 1;
+    private int EndIndex => Math.Min(Page * PageSize, TotalCount);
+
+    private bool IsFirstPage => Page == 1;
+    private bool IsLastPage => Page * PageSize >= TotalCount;
+
+    private AlertModel AlertData = new();
+    private AlertModel AlertData2 = new();
+    private bool IsCreatingReport { get; set; } = false;
+    private bool IsEditingReport { get; set; } = false;
+    private CreateReportRequest? ReportBeingEdited { get; set; }
+
+    protected override async Task OnInitializedAsync() => await FetchReportsAsync();
+
+    private void ShowCreateReportForm() => IsCreatingReport = true;
+
+    private void ShowEditReportForm(int id)
+    {
+        ReportDto? report = Reports.FirstOrDefault(r => r.Id == id);
+        if (report != null)
+        {
+            ReportBeingEdited = new()
+            {
+                Id = report.Id.ToString(),
+                Title = report.Title,
+                Location = report.Location,
+                Description = report.Description,
+                CategoryId = report.CategoryId.ToString(),
+                Latitude = report.Latitude.ToString(),
+                Longitude = report.Longitude.ToString(),
+            };
+            IsEditingReport = true;
+        }
+        else
+        {
+            AlertData = new AlertModel
+            {
+                IsVisible = true,
+                Style = AlertTypeEnum.Danger,
+                Title = "Error",
+                Message = "Report not found.",
+                Position = AlertStylePositionEnum.BottomRight
+            };
+        }
+    }
+
+    private async Task OnReportCreated((MultipartFormDataContent content, int? id) report)
+    {
+        ReportResponse response = await ReportsService.CreateAsync(report.content);
+        if(response.StatusCode >= 200 && response.StatusCode < 300)
+        {
+            AlertData = new AlertModel
+            {
+                IsVisible = true,
+                Style = AlertTypeEnum.Information,
+                Title = "Success",
+                Message = "Report created successfully!",
+                Position = AlertStylePositionEnum.BottomRight
+            };
+
+            IsCreatingReport = false;
+        }
+        else
+        {
+            AlertData = new AlertModel
+            {
+                IsVisible = true,
+                Style = AlertTypeEnum.Danger,
+                Title = "Error",
+                Message = response.Message ?? "An error occurred while creating the report.",
+                Position = AlertStylePositionEnum.BottomRight
+            };
+        }
+
+        await FetchReportsAsync();
+    }
+
+    private void OnCancelCreate() => IsCreatingReport = false;
+
+    private async Task FetchReportsAsync()
+    {
+        var request = new ReportsPaginatedRequest
+        {
+            Page = Page,
+            PageSize = PageSize,
+            Search = SearchText,
+            SortAscending = SortAscending,
+            SortField = SortField,
+            Status = StatusFilter
+        };
+
+        var response = await ReportsService.GetAllAsync(request);
+        Reports = response.Items ?? new();
+        TotalCount = response.TotalCount;
+        StateHasChanged();
+    }
+
+    private async Task PreviousPage()
+    {
+        if (Page > 1)
+        {
+            Page--;
+            await FetchReportsAsync();
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (!IsLastPage)
+        {
+            Page++;
+            await FetchReportsAsync();
+        }
+    }
+
+    private async Task OnSearchTextChanged(string value)
+    {
+        SearchText = value;
+        Page = 1;
+        await FetchReportsAsync();
+    }
+
+    private async Task OnSortChanged(ChangeEventArgs e)
+    {
+        string? selected = e.Value?.ToString();
+        if (!string.IsNullOrWhiteSpace(selected))
+        {
+            if (selected.StartsWith("CreatedAt"))
+            {
+                SortField = "CreatedAt";
+                SortAscending = selected.EndsWith("Asc");
+            }
+            else if (selected.StartsWith("Status"))
+            {
+                SortField = "Status";
+                SortAscending = selected.EndsWith("Asc");
+            }
+            Page = 1;
+            await FetchReportsAsync();
+        }
+    }
+
+    private async Task OnStatusFilterChanged(ChangeEventArgs e)
+    {
+        string? selectedStatus = e.Value?.ToString();
+        if (string.IsNullOrWhiteSpace(selectedStatus))
+        {
+            StatusFilter = null;
+        }
+        else
+        {
+            if (Enum.TryParse<ReportStatusEnum>(selectedStatus, out var status))
+            {
+                StatusFilter = status;
+            }
+            else
+            {
+                StatusFilter = null;
+            }
+        }
+        Page = 1;
+        await FetchReportsAsync();
+    }
+
+    private void GoToReportDetail(int reportId)
+    {
+        NavigationManager.NavigateTo($"/report/{reportId}");
+    }
+
+    private void ConfirmDeleteReport(int reportId)
+    {
+        AlertData = new AlertModel
+        {
+            IsVisible = true,
+            Style = AlertTypeEnum.Warning,
+            Message = "Are you sure you want to delete this report?",
+            Title = "Delete Report",
+            Position = AlertStylePositionEnum.Center,
+            HasActions = true,
+            OkText = "Delete",
+            CancelText = "Cancel",
+            OnOk = EventCallback.Factory.Create(this, () => DeleteReport(reportId)),
+            OnCancel = EventCallback.Factory.Create(this, () => AlertData.IsVisible = false)
+        };
+    }
+
+    private async Task DeleteReport(int reportId)
+    {
+        ReportResponse response = await ReportsService.DeleteAsync(reportId);
+
+        if (response.StatusCode >= 200 && response.StatusCode < 300)
+        {
+            AlertData2 = new AlertModel
+            {
+                IsVisible = true,
+                Style = AlertTypeEnum.Information,
+                Message = "Report deleted successfully.",
+                Title = "Success",
+                Position = AlertStylePositionEnum.BottomRight
+            };
+
+            await FetchReportsAsync();
+        }
+        else
+        {
+            AlertData2 = new AlertModel
+            {
+                IsVisible = true,
+                Style = AlertTypeEnum.Danger,
+                Message = response.Message ?? "Failed to delete report.",
+                Title = "Error",
+                Position = AlertStylePositionEnum.BottomRight
+            };
+        }
+    }
+
+    private async Task OnReportUpdated((MultipartFormDataContent content, int? id) updatedReport)
+    {
+        if (updatedReport.id == null)
+        {
+            AlertData = new AlertModel
+            {
+                IsVisible = true,
+                Style = AlertTypeEnum.Danger,
+                Title = "Error",
+                Message = "Report ID is required for update.",
+                Position = AlertStylePositionEnum.BottomRight
+            };
+            return;
+        }
+        ReportResponse response = await ReportsService.UpdateAsync(updatedReport.id, updatedReport.content);
+
+        if (response.StatusCode >= 200 && response.StatusCode < 300)
+        {
+            AlertData = new AlertModel
+            {
+                IsVisible = true,
+                Style = AlertTypeEnum.Information,
+                Title = "Success",
+                Message = "Report updated successfully!",
+                Position = AlertStylePositionEnum.BottomRight
+            };
+            IsEditingReport = false;
+            ReportBeingEdited = null;
+        }
+        else
+        {
+            AlertData = new AlertModel
+            {
+                IsVisible = true,
+                Style = AlertTypeEnum.Danger,
+                Title = "Error",
+                Message = response.Message ?? "An error occurred while updating the report.",
+                Position = AlertStylePositionEnum.BottomRight
+            };
+        }
+
+        await FetchReportsAsync();
+    }
+
+    private void OnCancelEdit()
+    {
+        IsEditingReport = false;
+        ReportBeingEdited = null;
+    }
+}

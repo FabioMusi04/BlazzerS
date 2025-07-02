@@ -1,0 +1,207 @@
+﻿@page "/dashboard/analytics"
+@attribute [Authorize(Roles = "Admin")]
+
+@inject ReportService ReportService
+@inject IJSRuntime JS
+
+@using System.Net.Http.Json
+@using System.Globalization
+@using Microsoft.AspNetCore.Authorization
+
+<div class="flex items-center justify-between mt-5 mb-8 px-3">
+    <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight flex-shrink-0">📊 Analytics Dashboard</h1>
+
+    <button class="btn-primary px-5 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
+            @onclick="ExportReportSummaryPdfAsync">
+        📄 Esporta PDF riepilogo
+    </button>
+</div>
+
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8 mb-12">
+
+    <div class="bg-white rounded-xl shadow-md p-6 flex flex-col items-center text-center transform hover:scale-[1.03] transition-transform duration-300">
+        <div class="text-blue-600 mb-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="inline-block h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-6h13v6" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 21h14a2 2 0 002-2v-7H3v7a2 2 0 002 2z" />
+            </svg>
+        </div>
+        <p class="text-sm uppercase tracking-wide text-gray-500 font-semibold">Total Reports</p>
+        <p class="mt-1 text-3xl font-extrabold text-blue-600">@TotalReports</p>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-md p-6 flex flex-col items-center text-center transform hover:scale-[1.03] transition-transform duration-300">
+        <div class="text-yellow-500 mb-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="inline-block h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 20.5a8.5 8.5 0 118.5-8.5" />
+            </svg>
+        </div>
+        <p class="text-sm uppercase tracking-wide text-gray-500 font-semibold">Pending</p>
+        <p class="mt-1 text-3xl font-extrabold text-yellow-500">@Pending</p>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-md p-6 flex flex-col items-center text-center transform hover:scale-[1.03] transition-transform duration-300">
+        <div class="text-green-600 mb-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="inline-block h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+        </div>
+        <p class="text-sm uppercase tracking-wide text-gray-500 font-semibold">Resolved</p>
+        <p class="mt-1 text-3xl font-extrabold text-green-600">@Resolved</p>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-md p-6 flex flex-col items-center text-center transform hover:scale-[1.03] transition-transform duration-300">
+        <div class="text-red-600 mb-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="inline-block h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </div>
+        <p class="text-sm uppercase tracking-wide text-gray-500 font-semibold">Rejected</p>
+        <p class="mt-1 text-3xl font-extrabold text-red-600">@Rejected</p>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-md p-6 flex flex-col items-center text-center lg:col-span-1 col-span-full transform hover:scale-[1.03] transition-transform duration-300">
+        <div class="text-purple-700 mb-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="inline-block h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 14a9 9 0 00-9 9h18a9 9 0 00-9-9z" />
+            </svg>
+        </div>
+        <p class="text-sm uppercase tracking-wide text-gray-500 font-semibold">Total Users</p>
+        <p class="mt-1 text-3xl font-extrabold text-purple-700">@TotalUsers</p>
+    </div>
+</div>
+
+<section class="grid grid-cols-1 md:grid-cols-2 gap-10">
+    @if (DailyReportData.Any())
+    {
+        <article class="bg-white rounded-xl shadow-lg p-6 animate-fadeIn">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 tracking-wide">📈 Reports Over Time</h2>
+            <div id="area-chart" class="w-full" style="height:320px;"></div>
+        </article>
+    }
+
+    @if (DailyUserCounts.Any())
+    {
+        <article class="bg-white rounded-xl shadow-lg p-6 animate-fadeIn">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 tracking-wide">👥 User Registrations Over Time</h2>
+            <div id="user-registration-chart" class="w-full" style="height:320px;"></div>
+        </article>
+    }
+
+    @if (ReportsPerCategory.Any())
+    {
+        <article class="bg-white rounded-xl shadow-lg p-6 animate-fadeIn">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 tracking-wide">📂 Reports per Category</h2>
+            <div id="category-chart" class="w-full" style="height:320px;"></div>
+        </article>
+    }
+
+    @if (TopUsers.Any())
+    {
+        <article class="bg-white rounded-xl shadow-lg p-6 animate-fadeIn">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 tracking-wide">⭐ Top 5 Users with Most Reports</h2>
+            <div id="topusers-chart" class="w-full" style="height:320px;"></div>
+        </article>
+    }
+</section>
+
+
+@code {
+    private int TotalReports;
+    private int Pending;
+    private int Resolved;
+    private int Rejected;
+    private int TotalUsers;
+    private List<DailyReportCount> DailyReportData = new();
+    private List<DailyReportCount> DailyUserCounts = new();
+    public List<ReportsPerCategory> ReportsPerCategory { get; set; } = new();
+    public List<TopUserReportCount> TopUsers { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await ReportService.GetReportAnalyticsAsync(false);
+
+        if (result != null)
+        {
+            TotalReports = result.TotalReports;
+            Pending = result.PendingReports;
+            Resolved = result.ResolvedReports;
+            Rejected = result.RejectedReports;
+            TotalUsers = result.TotalUsers;
+
+            DailyReportData = result.DailyReportCounts ?? new List<DailyReportCount>();
+            DailyUserCounts = result.DailyUserCounts ?? new List<DailyReportCount>();
+            ReportsPerCategory = result.ReportsPerCategory ?? new List<ReportsPerCategory>();
+            TopUsers = result.TopUsers ?? new List<TopUserReportCount>();
+        }
+        else
+        {
+            TotalReports = Pending = Resolved = Rejected = TotalUsers = 0;
+            DailyReportData = new List<DailyReportCount>();
+            DailyUserCounts = new List<DailyReportCount>();
+            ReportsPerCategory = new List<ReportsPerCategory>();
+            TopUsers = new List<TopUserReportCount>();
+        }
+
+        int neededDays = 7;
+        if (DailyReportData.Count < neededDays)
+        {
+            var today = DateTime.Today;
+            var mockData = new List<DailyReportCount>();
+
+            for (int i = neededDays - 1; i >= 0; i--)
+            {
+                var day = today.AddDays(-i);
+                var existing = DailyReportData.FirstOrDefault(d => d.Date.Date == day.Date);
+                if (existing != null)
+                {
+                    mockData.Add(existing);
+                }
+                else
+                {
+                    mockData.Add(new DailyReportCount
+                    {
+                        Date = day,
+                        Count = Random.Shared.Next(5, 20)
+                    });
+                }
+            }
+            DailyReportData = mockData;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (DailyReportData.Any())
+        {
+            var dates = DailyReportData.Select(d => d.Date.ToString("MMM dd")).ToArray();
+            var series = DailyReportData.Select(d => d.Count).ToArray();
+
+            var userDates = DailyUserCounts.Select(d => d.Date.ToString("MMM dd")).ToArray();
+            var userCountsOverTime = DailyUserCounts.Select(d => d.Count).ToArray();
+
+            var categories = ReportsPerCategory.Select(x => x.Category).ToArray();
+            var countsCategory = ReportsPerCategory.Select(x => x.Count).ToArray();
+
+            var userLabels = TopUsers.Select(u => u.UserId).ToArray();
+            var userCounts = TopUsers.Select(u => u.Count).ToArray();
+
+            await JS.InvokeVoidAsync("renderAreaChart", dates, series);
+            await JS.InvokeVoidAsync("renderUserRegistrationChart", userDates, userCountsOverTime);
+            await JS.InvokeVoidAsync("renderReportsPerCategoryChart", categories, countsCategory);
+            await JS.InvokeVoidAsync("renderTopUsersPieChart", userLabels, userCounts);
+        }
+    }
+
+    private async Task ExportReportSummaryPdfAsync()
+    {
+        var pdfBytes = await ReportService.GetPdf();
+
+        var base64 = Convert.ToBase64String(pdfBytes);
+
+        await JS.InvokeVoidAsync("openPdfFromBase64", base64);
+    }
+
+}

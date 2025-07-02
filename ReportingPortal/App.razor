@@ -1,0 +1,54 @@
+﻿@using Microsoft.AspNetCore.Components.Authorization
+
+@inject NavigationManager Navigation
+
+<style>
+    .text-link {
+        color: rgba(111, 248, 116, 0.8);
+        text-decoration: none;
+    }
+</style>
+
+<Router AppAssembly="@typeof(App).Assembly">
+    <Found Context="routeData">
+        <CascadingAuthenticationState>
+            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+                <NotAuthorized>
+                    @if (!context.User.Identity.IsAuthenticated)
+                    {
+                        GoToLogin();
+                    }
+                    else
+                    {
+                        GoToUnauthorized();
+                    }
+                </NotAuthorized>
+                <Authorizing>
+                    <p>Authorizing...</p>
+                </Authorizing>
+            </AuthorizeRouteView>
+
+            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+        </CascadingAuthenticationState>
+    </Found>
+    <NotFound>
+        <PageTitle>Page Not Found</PageTitle>
+        <div class="flex flex-col items-center justify-center min-h-screen text-center bg-gray-50 px-4">
+            <div class="text-6xl mb-4">🚫</div>
+
+            <h1 class="text-4xl font-bold text-gray-800 mb-2">Oops! Page not found</h1>
+            <p class="text-lg text-gray-600 mb-6">
+                Sorry, there's nothing at this address.
+            </p>
+
+            <NavLink href="/" class="inline-block bg-blue-600 rounded-md px-3 py-2 text-bold font-medium hover:bg-blue-700 transition text-link">
+                ⬅️ Go back home
+            </NavLink>
+        </div>
+    </NotFound>
+</Router>
+
+@code {
+    private void GoToLogin() => Navigation.NavigateTo("/login");
+    private void GoToUnauthorized() => Navigation.NavigateTo("/unauthorized");
+}

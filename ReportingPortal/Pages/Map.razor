@@ -1,0 +1,64 @@
+﻿@page "/map"
+@attribute [Authorize]
+
+@using Microsoft.AspNetCore.Authorization
+
+@inject IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager
+@inject CustomAuthStateProvider _authStateProvider
+
+<style>
+    .map-link {
+        background-color: #22c55e;
+        font-size: 0.875rem;
+        font-weight: 500;
+        text-decoration: none;
+        color: white;
+        position: absolute;
+        bottom: 1.5rem;
+        right: 1rem;
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.5rem;
+        z-index: 5000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid white;
+        transition: transform 0.2s ease-in-out;
+    }
+
+        .map-link:hover {
+            transform: scale(1.1);
+        }
+</style>
+
+<div class="w-full relative h-[93vh]" id="map">
+    <button @onclick="GoBack" class="map-link">
+        <i class="fa-solid fa-compress"></i>
+    </button>
+</div>
+
+
+
+@code {
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("MAP.initMap");
+        }
+    }
+
+    private async Task GoBack()
+    {
+        var user = await _authStateProvider.GetAuthenticationStateAsync();
+        if (user.User.IsInRole("Admin"))
+        {
+            NavigationManager.NavigateTo("/dashboard");
+        }
+        else
+        {
+            NavigationManager.NavigateTo("/home");
+        }
+    }
+}

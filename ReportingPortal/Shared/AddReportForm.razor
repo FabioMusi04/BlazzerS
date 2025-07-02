@@ -1,0 +1,342 @@
+@using Models
+@using Models.enums
+@using NetTopologySuite.Geometries
+@using System.Globalization;
+
+@inject CategoryService CategoryService
+
+@if (IsVisible)
+{
+    <Alert AlertData="@AlertData" OnDismissed="@(() => AlertData.IsVisible = false)" />
+
+    <div class="fixed inset-0 bg-black/50 z-40"></div>
+
+    <div class="fixed inset-0 z-50 p-4">
+        <div class="flex justify-center items-center min-h-screen">
+            <div class="w-full max-w-4xl bg-white rounded-2xl shadow-xl p-6 md:p-10 relative max-h-[90vh] overflow-y-auto">
+                <h2 class="text-3xl font-bold text-gray-800 mb-8">Submit a Report</h2>
+
+                @if (MapVisible)
+                {
+                    <div>
+                        <div class="flex justify-between items-center mb-4">
+                            <button type="button"
+                                    class="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition"
+                                    @onclick="() => MapVisible = false">
+                                <span class="text-lg">🔙</span>
+                                <span>Go Back to Form</span>
+                            </button>
+                        </div>
+
+                        <LeafletMapReport OnConfirm="OnMapConfirm" OnCancel="OnMapCancel" />
+                    </div>
+                }
+
+                else
+                {
+                    <EditForm Model="ReportModel" OnValidSubmit="HandleFormSubmit">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                            <div class="col-span-1 flex flex-col">
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">Category</label>
+                                <input type="text" class="w-full mb-3 px-3 py-2 border rounded-md" placeholder="Search..."
+                                       @oninput="OnSearchChanged" />
+
+                                <div class="grid grid-cols-2 sm:grid-cols-2 gap-3 overflow-y-auto pr-2 max-h-[400px]">
+                                    @foreach (var category in Categories)
+                                    {
+                                        <button type="button"
+                                                class="w-full border px-3 py-2 rounded-md text-sm flex flex-col items-center transition hover:bg-green-500
+                                                                           @(ReportModel.CategoryId == category.Id.ToString() ? "bg-green-600 text-white" : "bg-white")"
+                                                @onclick="() => SelectCategory(category)">
+                                            <span class="text-xl"><i class="@category.IconClass"></i></span>
+                                            <span>@category.Name</span>
+                                        </button>
+                                    }
+                                </div>
+
+                                @if (HasMoreCategories)
+                                {
+                                    <button type="button" class="mt-2 text-sm text-blue-600 hover:underline" @onclick="LoadMoreCategories">
+                                        Load more...
+                                    </button>
+                                }
+                            </div>
+
+                            <div class="col-span-2 space-y-5">
+
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-1">Title</label>
+                                    <InputText class="w-full px-4 py-2 border rounded-md" @bind-Value="ReportModel.Title" required />
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-1">Description</label>
+                                    <InputTextArea rows="5" class="w-full px-4 py-2 border rounded-md"
+                                                   @bind-Value="ReportModel.Description" />
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-1">Location</label>
+                                    <div>
+                                        <InputText class="w-full px-3 py-2 border rounded-md bg-gray-100"
+                                                   @bind-Value="ReportModel.Location" readonly />
+
+                                        <div class="flex gap-4 items-center mt-2">
+                                            <p class="m-0">Lat: @ReportModel.Latitude</p>
+                                            <p class="m-0">Lng: @ReportModel.Longitude</p>
+                                        </div>
+
+                                            <button type="button"
+                                                    class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700
+                           flex items-center justify-center min-h-[38px] min-w-[44px]"
+                                                    @onclick="OpenMap"
+                                                    aria-label="Pick location on map">
+                                                📍
+                                            </button>
+                                        </div>
+                                    </div>
+
+
+                                @{
+                                    int.TryParse(ReportModel?.Id, out var id);
+                                }
+
+                                @if (id == 0)
+                                {
+                                    <div>
+                                        <label class="block text-sm font-semibold text-gray-700 mb-1">Photos</label>
+                                        <label for="photo-upload"
+                                               class="inline-block cursor-pointer px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 select-none">
+                                            + Add Photo
+                                        </label>
+                                        <InputFile id="photo-upload" class="hidden" OnChange="HandlePhotoUpload" />
+
+                                        @if (UploadedPhoto != null)
+                                        {
+                                            <div class="relative rounded-lg overflow-hidden shadow-md border border-gray-200 w-28 h-28 mt-4">
+                                                <img src="@UploadedPhoto.PreviewUrl" class="w-full h-full object-cover" />
+                                                <button type="button" class="absolute top-1 right-1 bg-black bg-opacity-50 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-opacity-75"
+                                                        @onclick="() => UploadedPhoto = null">
+                                                    &times;
+                                                </button>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+
+                                <div class="flex justify-between mt-6">
+                                    <button type="button" class="px-4 py-2 border rounded-full text-gray-600 hover:bg-gray-100"
+                                            @onclick="HandleCancelClick">
+                                        Cancel
+                                    </button>
+                                    <button type="submit"
+                                            class="px-6 py-2 bg-green-600 text-white rounded-full hover:bg-green-700 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            disabled="@IsSubmitting">
+                                        @if (IsSubmitting)
+                                        {
+                                            <span class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></span>
+                                        }
+                                        <span>Submit</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </EditForm>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public EventCallback<(MultipartFormDataContent, int?)> OnSubmit { get; set; }
+    [Parameter] public CreateReportRequest ReportModel { get; set; } = new();
+
+    private List<Category> Categories = new();
+    private CategoriesPaginatedRequest CategoryRequest = new()
+    {
+        Page = 1,
+        PageSize = 10,
+        Search = ""
+    };
+    private bool HasMoreCategories = true;
+    private PhotoUpload? UploadedPhoto = null;
+    private bool IsVisible = true;
+    private bool MapVisible = false;
+    private bool IsSubmitting = false;
+
+    private AlertModel AlertData = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCategories();
+    }
+
+    private async Task HandleFormSubmit()
+    {
+        if (IsSubmitting)
+            return;
+
+        IsSubmitting = true;
+
+        try
+        {
+            if (int.Parse(ReportModel.CategoryId) == 0) return;
+
+            using var content = new MultipartFormDataContent();
+            var culture = CultureInfo.InvariantCulture;
+
+            content.Add(new StringContent(ReportModel.Title ?? ""), "Title");
+            content.Add(new StringContent(ReportModel.Description ?? ""), "Description");
+            content.Add(new StringContent(ReportModel.Location ?? ""), "Location");
+            content.Add(new StringContent(ReportModel.LocationDetail ?? "Prova"), "LocationDetail");
+            content.Add(new StringContent(ReportModel.CategoryId.ToString()), "CategoryId");
+            content.Add(new StringContent(ReportModel.Latitude.ToString(culture)), "Latitude");
+            content.Add(new StringContent(ReportModel.Longitude.ToString(culture)), "Longitude");
+
+            if (UploadedPhoto != null)
+            {
+                var fileContent = new StreamContent(UploadedPhoto.File.OpenReadStream(10 * 1024 * 1024));
+                fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(UploadedPhoto.File.ContentType);
+                content.Add(fileContent, "File", UploadedPhoto.File.Name);
+            }
+
+            if (OnSubmit.HasDelegate)
+            {
+                int? id = int.TryParse(ReportModel?.Id, out var parsedId) ? parsedId : null;
+                await OnSubmit.InvokeAsync((content, id));
+            }
+
+            ResetForm();
+        }
+        finally
+        {
+            IsSubmitting = false;
+        }
+    }
+
+
+    private async Task HandleCancelClick()
+    {
+        ResetForm();
+        if (OnCancel.HasDelegate)
+            await OnCancel.InvokeAsync();
+    }
+
+    private void ResetForm()
+    {
+        ReportModel = new();
+        UploadedPhoto = null;
+        IsVisible = false;
+    }
+
+    private async Task HandlePhotoUpload(InputFileChangeEventArgs e)
+    {
+        IBrowserFile? file = e.File;
+        if (file == null)
+            return;
+
+        const long MaxSizeInBytes = 5 * 1024 * 1024;
+        if (file.Size > MaxSizeInBytes)
+        {
+            AlertData = new AlertModel
+            {
+                IsVisible = true,
+                Style = AlertTypeEnum.Danger,
+                Message = "File size exceeds the maximum limit of 5MB.",
+                Title = "File Size Error",
+                Position = AlertStylePositionEnum.BottomRight,
+            };
+            return;
+        }
+
+        var allowedTypes = new[] { "image/jpeg", "image/png", "image/webp", "image/gif" };
+        if (!allowedTypes.Contains(file.ContentType.ToLower()))
+        {
+            AlertData = new AlertModel
+            {
+                IsVisible = true,
+                Style = AlertTypeEnum.Danger,
+                Message = "Only JPEG, PNG, WebP, and GIF files are allowed.",
+                Title = "File Type Error",
+                Position = AlertStylePositionEnum.BottomRight,
+            };
+            return;
+        }
+
+        var buffer = new byte[file.Size];
+        await file.OpenReadStream().ReadAsync(buffer);
+        var base64 = Convert.ToBase64String(buffer);
+
+        UploadedPhoto = new PhotoUpload
+        {
+            File = file,
+            PreviewUrl = $"data:{file.ContentType};base64,{base64}"
+        };
+    }
+
+    private bool CanSubmit => !string.IsNullOrWhiteSpace(ReportModel.Title)
+    && !string.IsNullOrWhiteSpace(ReportModel.LocationDetail)
+    && int.Parse(ReportModel.CategoryId) != 0;
+
+    private void OpenMap()
+    {
+        MapVisible = true;
+    }
+
+    private async Task LoadCategories()
+    {
+        CategoriesPaginatedResponse result = await CategoryService.GetAllAsync(CategoryRequest);
+        if (result == null || result.Items == null || !result.Items.Any())
+        {
+            HasMoreCategories = false;
+            return;
+        }
+
+        HasMoreCategories = result.Items.Count == result.PageSize * result.Page;
+        Categories.AddRange(result.Items);
+    }
+
+    private async Task LoadMoreCategories()
+    {
+        CategoryRequest.Page++;
+        await LoadCategories();
+    }
+
+    private async Task OnSearchChanged(ChangeEventArgs e)
+    {
+        CategoryRequest.Search = e.Value?.ToString() ?? "";
+        CategoryRequest.Page = 1;
+        Categories.Clear();
+        await LoadCategories();
+    }
+
+    private void SelectCategory(Category category)
+    {
+        ReportModel.CategoryId = category.Id.ToString();
+    }
+
+    public class PhotoUpload
+    {
+        public IBrowserFile File { get; set; } = default!;
+        public string PreviewUrl { get; set; } = "";
+    }
+
+    private void OnMapConfirm(MarkerData markerData)
+    {
+        if (markerData is not null)
+        {
+            ReportModel.Location = markerData.Address.ToString();
+            ReportModel.Longitude = markerData.Lng.ToString();
+            ReportModel.Latitude = markerData.Lat.ToString();
+
+            MapVisible = false;
+        }
+    }
+
+    private void OnMapCancel()
+    {
+
+    }
+}

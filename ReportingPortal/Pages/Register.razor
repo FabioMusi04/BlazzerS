@@ -1,0 +1,151 @@
+@page "/register"
+@using Models.front
+@using System.Text.Json
+
+@inject NavigationManager Navigation
+@inject HttpClient HttpClient
+@inject AuthService authService
+@inject EmailVerificationTokenService tokenVerificationService
+@inject Blazored.LocalStorage.ILocalStorageService localStorage
+
+<div>
+    <Alert AlertData="@AlertData" OnDismissed="@(() => AlertData.IsVisible = false)" />
+    <Alert AlertData="@AlertData2" OnDismissed="@(() => AlertData2.IsVisible = false)" />
+
+    <RegisterForm OnRegister="HandleRegister" />
+</div>
+
+@code {
+    int userId = -1;
+
+    private AlertModel AlertData = new();
+    private AlertModel AlertData2 = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            string? token = await localStorage.GetItemAsync<string>("token");
+            if (!string.IsNullOrEmpty(token))
+            {
+                var userJson = await localStorage.GetItemAsync<string>("user");
+                if (!string.IsNullOrEmpty(userJson))
+                {
+                    var user = JsonSerializer.Deserialize<User>(userJson);
+                    if (user != null)
+                    {
+                        if (user.Role == UserRoleEnum.Admin)
+                        {
+                            Navigation.NavigateTo("/dashboard");
+                        }
+                        else
+                        {
+                            Navigation.NavigateTo("/home");
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private async Task HandleRegister(RegisterFormModel model)
+    {
+        RegisterRequest request = new RegisterRequest
+        {
+            Email = model.Email,
+            Password = model.Password,
+            ConfirmPassword = model.ConfirmPassword,
+            Name = model.Name,
+            Surname = model.Surname,
+        };
+
+        try
+        {
+            RegisterResponse response = await authService.RegisterAsync(request);
+
+            if (response.StatusCode >= 200 && response.StatusCode <= 299)
+            {
+                AlertData = new AlertModel
+                {
+                    IsVisible = true,
+                    Style = AlertTypeEnum.Information,
+                    Message = "Registration successful! Please check your email to confirm your account.",
+                    Title = "Registration Successful",
+                    Position = AlertStylePositionEnum.BottomRight,
+                };
+
+                userId = response.UserId;
+            }
+            else
+            {
+                AlertData = new AlertModel
+                {
+                    IsVisible = true,
+                    Style = AlertTypeEnum.Danger,
+                    Message = $"Registration failed: {response.Message}",
+                    Title = "Registration Failed",
+                    Position = AlertStylePositionEnum.BottomRight,
+                };
+                Console.WriteLine($"Registration failed: {response.Message} (Status: {response.StatusCode})");
+            }
+        }
+        catch (Exception ex)
+        {
+            AlertData = new AlertModel
+            {
+                IsVisible = true,
+                Style = AlertTypeEnum.Danger,
+                Message = $"An unexpected error occurred: {ex.Message}",
+                Title = "Error",
+                Position = AlertStylePositionEnum.BottomRight,
+            };
+
+            Console.WriteLine($"Unexpected error: {ex.Message}");
+        }
+    }
+
+    private async Task ResendVerificationEmail()
+    {
+        try
+        {
+            if (userId == -1)
+            {
+                Console.WriteLine("User ID is not set. Cannot resend verification email.");
+
+                AlertData2 = new AlertModel
+                {
+                    IsVisible = true,
+                    Style = AlertTypeEnum.Danger,
+                    Message = "Cannot resend verification email.",
+                    Title = "Problem",
+                    Position = AlertStylePositionEnum.BottomRight,
+                };
+
+                return;
+            }
+
+            await tokenVerificationService.RetryVerificationAsync(userId);
+            
+            AlertData2 = new AlertModel
+            {
+                IsVisible = true,
+                Style = AlertTypeEnum.Information,
+                Message = "Verification email resent successfully!",
+                Title = "Email Resent",
+                Position = AlertStylePositionEnum.BottomRight,
+            };
+        }
+        catch (Exception ex)
+        {
+            AlertData2 = new AlertModel
+            {
+                IsVisible = true,
+                Style = AlertTypeEnum.Danger,
+                Message = $"Failed to resend verification email: {ex.Message}",
+                Title = "Error",
+                Position = AlertStylePositionEnum.BottomRight,
+            };
+            Console.WriteLine($"Error resending verification email: {ex.Message}");
+        }
+    }
+}

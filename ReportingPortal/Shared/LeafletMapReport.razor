@@ -1,0 +1,44 @@
+﻿@inject IJSRuntime JSRuntime
+
+<div class="w-full relative h-[50vh]" id="map">
+    <div id="legend">
+        <strong>Legend:</strong><br />
+        Double-click anywhere on the map to drop a marker.
+    </div>
+
+    <div id="marker-confirm-panel">
+        <button @onclick="Confirm">Confirm</button>
+        <button class="cancel" @onclick="Cancel">Cancel</button>
+    </div>
+</div>
+
+@code {
+    [Parameter] public EventCallback<MarkerData> OnConfirm { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("MAP.initMap", true);
+        }
+    }
+
+    private async Task Confirm()
+    {
+        var result = await JSRuntime.InvokeAsync<MarkerData>("MAP.confirmMarker");
+        if (OnConfirm.HasDelegate)
+        {
+            await OnConfirm.InvokeAsync(result);
+        }
+    }
+
+    private async Task Cancel()
+    {
+        await JSRuntime.InvokeVoidAsync("MAP.cancelMarker");
+        if (OnCancel.HasDelegate)
+        {
+            await OnCancel.InvokeAsync();
+        }
+    }
+}

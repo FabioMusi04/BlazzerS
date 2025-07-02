@@ -1,0 +1,133 @@
+﻿@inject IJSRuntime JS
+
+@if (AlertData.IsVisible)
+{
+    <div class="@AlertWrapperClasses" @onclick="HandleOverlayClick">
+        <div class="@AlertClasses" @onclick:stopPropagation>
+            <div class="flex items-start justify-between">
+                <div class="flex items-start justify-between">
+                    <div class="flex items-center gap-2">
+                        @if (AlertData.Style == AlertTypeEnum.Information)
+                        {
+                            <span class="text-blue-500">ℹ️</span>
+                        }
+                        else if (AlertData.Style == AlertTypeEnum.Warning)
+                        {
+                            <span class="text-yellow-500">⚠️</span>
+                        }
+                        else if (AlertData.Style == AlertTypeEnum.Danger)
+                        {
+                            <span class="text-red-500">⛔</span>
+                        }
+                        else if (AlertData.Style == AlertTypeEnum.Normal)
+                        {
+                            <span class="text-green-500">✅</span>
+                        }
+                        <div class="text-base font-medium">@AlertData.Title</div>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-2 text-sm">@AlertData.Message</div>
+
+            @if (AlertData.HasActions)
+            {
+                <div class="mt-4 flex justify-end gap-3">
+                    <button @onclick="OnCancelClicked" class="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 cursor-pointer">
+                        @AlertData.CancelText
+                    </button>
+                    <button @onclick="OnOkClicked" class="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded hover:bg-blue-700 cursor-pointer">
+                        @AlertData.OkText
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public AlertModel AlertData { get; set; } = new();
+    [Parameter] public EventCallback OnDismissed { get; set; }
+
+    private bool IsAnimatingOut = false;
+    private string AlertClasses
+    {
+        get
+        {
+            string baseClasses = AlertData.HasActions
+                ? "rounded-lg shadow-lg p-5 w-full max-w-md"
+                : "rounded-md shadow-lg p-4 cursor-pointer";
+
+            string typeClasses = AlertData.Style switch
+            {
+                AlertTypeEnum.Normal => AlertData.HasActions
+                    ? "bg-green-100 text-green-900"
+                    : "bg-green-600 text-white",
+                AlertTypeEnum.Information => AlertData.HasActions
+                    ? "bg-blue-100 text-blue-900"
+                    : "bg-blue-600 text-white",
+                AlertTypeEnum.Warning => AlertData.HasActions
+                    ? "bg-yellow-100 text-yellow-900"
+                    : "bg-yellow-500 text-white",
+                AlertTypeEnum.Danger => AlertData.HasActions
+                    ? "bg-red-100 text-red-900"
+                    : "bg-red-600 text-white",
+                _ => "bg-white text-black"
+            };
+
+            return $"{baseClasses} {typeClasses}";
+        }
+    }
+
+    private string AlertWrapperClasses => AlertData.Position switch
+    {
+        AlertStylePositionEnum.BottomRight => $"fixed top-6 right-6 z-500 " +
+                          $"{(IsAnimatingOut ? "slide-out-right" : "slide-in-right")}",
+        AlertStylePositionEnum.Center => "fixed inset-0 min-h-screen z-500 flex items-center justify-center bg-black/50 transition-opacity duration-300 ease-in-out",
+        _ => "fixed inset-0 z-500 flex items-center justify-center bg-black/30"
+    };
+
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!AlertData.HasActions && AlertData.IsVisible)
+        {
+            await Task.Delay(5000);
+            await Dismiss();
+        }
+    }
+
+    private async Task Dismiss()
+    {
+        if ((int)AlertStylePositionEnum.BottomRight == 0)
+        {
+            IsAnimatingOut = true;
+            StateHasChanged();
+            await Task.Delay(300);
+        }
+
+        AlertData.IsVisible = false;
+        IsAnimatingOut = false;
+        await OnDismissed.InvokeAsync();
+        StateHasChanged();
+    }
+
+    private async Task HandleOverlayClick()
+    {
+        if (!AlertData.HasActions)
+        {
+            await Dismiss();
+        }
+    }
+
+    private async Task OnOkClicked()
+    {
+        await AlertData.OnOk.InvokeAsync();
+        await Dismiss();
+    }
+
+    private async Task OnCancelClicked()
+    {
+        await AlertData.OnCancel.InvokeAsync();
+        await Dismiss();
+    }
+}
