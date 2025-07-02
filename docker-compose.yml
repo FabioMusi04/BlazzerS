@@ -8,8 +8,6 @@ services:
       - "8082:80"
     depends_on:
       - backend
-    environment:
-      - ASPNETCORE_URLS=http://+:80 
 
   backend:
     build:
@@ -21,9 +19,6 @@ services:
       - db
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__Default=Host=db;Port=5432;Database=myappdb;Username=myuser;Password=mypassword
-      - ASPNETCORE_URLS=http://+:80
-
 
   db:
     image: postgres:16
