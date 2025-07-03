@@ -3,6 +3,7 @@
 @using Models.front
 @using Models.http
 @using System.Text.Json
+@using Front.Shared;
 
 @inject Blazored.LocalStorage.ILocalStorageService localStorage
 @inject AuthService authService
@@ -10,7 +11,7 @@
 @inject NavigationManager Navigation
 @inject CustomAuthStateProvider _authStateProvider
 
-<div>
+<div class="min-h-screen flex items-center justify-center bg-gray-800 px-4">
     <Alert AlertData="@AlertData" OnDismissed="@(() => AlertData.IsVisible = false)" />
     <Alert AlertData="@AlertData2" OnDismissed="@(() => AlertData2.IsVisible = false)" />
 

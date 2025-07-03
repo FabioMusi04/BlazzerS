@@ -1,0 +1,152 @@
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@inject Blazored.LocalStorage.ILocalStorageService LocalStorage
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthProvider
+@implements IDisposable
+@inject IJSRuntime JS
+
+<button class="fixed top-4 left-4 z-50 p-2 rounded-md bg-gray-800 text-green-500 sidebar-toggle-btn"
+        @onclick="ToggleSidebar" aria-label="Toggle menu">
+    <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"
+         stroke-linecap="round" stroke-linejoin="round">
+        @if (_sidebarOpen)
+        {
+            <path d="M6 18L18 6M6 6l12 12" />
+        }
+        else
+        {
+            <path d="M4 6h16M4 12h16M4 18h16" />
+        }
+    </svg>
+</button>
+
+@if (_sidebarOpen && IsMobile)
+{
+    <div class="fixed inset-0 bg-black/50 z-40 sidebar-backdrop" @onclick="CloseSidebar"></div>
+}
+
+<nav class="sidebar bg-gray-900 text-green-500 z-50 h-full w-79 border-gray-500 border-r-5 @( _sidebarOpen ? "open" : "closed")">
+
+    <div class="flex items-center justify-between p-4 border-b border-gray-700">
+        <img src="/logo.png" alt="Logo" class="h-10 w-auto" />
+        <button class="text-green-500 text-3xl leading-none sidebar-toggle-btn" @onclick="ToggleSidebar" aria-label="Close menu">&times;</button>
+    </div>
+
+    <Alert AlertData="@AlertData" OnDismissed="@(() => AlertData.IsVisible = false)" />
+
+    <div class="flex flex-col mt-4 space-y-2 px-2">
+        <AuthorizeView>
+            <Authorized>
+                <NavLink href="/home" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-gray-800"
+                         activeClass="bg-gray-800 font-semibold" Match="NavLinkMatch.Prefix">
+                    <i class="fa-solid fa-house w-5"></i> Home
+                </NavLink>
+                <NavLink href="/notifications" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-gray-800"
+                         activeClass="bg-gray-800 font-semibold" Match="NavLinkMatch.Prefix">
+                    <i class="fa-solid fa-bell w-5"></i> Notifications
+                </NavLink>
+                <NavLink href="/profile" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-gray-800"
+                         activeClass="bg-gray-800 font-semibold" Match="NavLinkMatch.Prefix">
+                    <i class="fa-solid fa-user w-5"></i> Profile
+                </NavLink>
+                <button class="flex items-center gap-3 px-3 py-2 rounded hover:bg-gray-800 text-left w-full"
+                        @onclick="LogOut">
+                    <i class="fa-solid fa-right-from-bracket w-5"></i> Logout
+                </button>
+            </Authorized>
+            <NotAuthorized>
+                <NavLink href="/register" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-gray-800"
+                         activeClass="bg-gray-800 font-semibold">
+                    <i class="fa-solid fa-user-plus w-5"></i> Register
+                </NavLink>
+                <NavLink href="/login" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-gray-800"
+                         activeClass="bg-gray-800 font-semibold">
+                    <i class="fa-solid fa-right-to-bracket w-5"></i> Login
+                </NavLink>
+            </NotAuthorized>
+        </AuthorizeView>
+
+        <NavLink href="/" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-gray-800"
+                 activeClass="bg-gray-800 font-semibold" Match="NavLinkMatch.All">
+            <i class="fa-solid fa-arrow-left w-5"></i> Access Portal
+        </NavLink>
+    </div>
+</nav>
+
+
+@code {
+    private bool _sidebarOpen = false;
+    private bool IsMobile => windowWidth < 1900;
+    private int windowWidth;
+
+    private AlertModel AlertData = new();
+
+    private async Task LogOut()
+    {
+        await LocalStorage.RemoveItemAsync("token");
+        await LocalStorage.RemoveItemAsync("user");
+
+        if (AuthProvider is CustomAuthStateProvider customProvider)
+        {
+            customProvider.NotifyUserLogout();
+        }
+
+        AlertData = new AlertModel
+        {
+            IsVisible = true,
+            Style = AlertTypeEnum.Information,
+            Message = "You have been logged out successfully.",
+            Title = "Logged Out",
+            Position = AlertStylePositionEnum.BottomRight,
+        };
+
+        Navigation.NavigateTo("/login");
+        CloseSidebar();
+    }
+
+    private void ToggleSidebar()
+    {
+        _sidebarOpen = !_sidebarOpen;
+    }
+
+    private void CloseSidebar()
+    {
+        _sidebarOpen = false;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            windowWidth = await JS.InvokeAsync<int>("blazorHelpers.getWindowWidth");
+            StateHasChanged();
+
+            await JS.InvokeVoidAsync("blazorHelpers.registerResizeCallback", DotNetObjectReference.Create(this));
+        }
+    }
+
+    [JSInvokable]
+    public Task OnBrowserResize(int width)
+    {
+        windowWidth = width;
+        if (windowWidth >= 1900)
+            _sidebarOpen = false;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    public void Dispose()
+    {
+        AuthProvider.AuthenticationStateChanged -= OnAuthStateChanged;
+    }
+
+    private void OnAuthStateChanged(Task<AuthenticationState> task)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    protected override void OnInitialized()
+    {
+        AuthProvider.AuthenticationStateChanged += OnAuthStateChanged;
+    }
+}

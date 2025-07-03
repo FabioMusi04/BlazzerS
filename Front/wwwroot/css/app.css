@@ -122,213 +122,38 @@ code {
     text-align: start;
 }
 
-.status-Pending {
-    color: #FFA500;
-    background-color: #FFF5E5;
-    border: 1px solid #FFA500;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-weight: bold;
-}
-
-.status-InProgress {
-    color: #007BFF;
-    background-color: #E6F0FF;
-    border: 1px solid #007BFF;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-weight: bold;
-}
-
-.status-Resolved {
-    color: #28A745;
-    background-color: #E6F9E8;
-    border: 1px solid #28A745;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-weight: bold;
-}
-
-.status-Rejected {
-    color: #DC3545;
-    background-color: #FDECEA;
-    border: 1px solid #DC3545;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-weight: bold;
-}
-
-.bg-User {
-    background-color: #6c757d;
-    /* Gray */
-    color: white;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-weight: 600;
-}
-
-.bg-Admin {
-    background-color: #dc3545;
-    /* Red */
-    color: white;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-weight: 600;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: scale(0.95);
-    }
-
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
-}
-
-@keyframes fade-in {
-    from {
-        opacity: 0;
-        transform: translateY(5px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.animate-fade-in {
-    animation: fade-in 0.3s ease-out;
-}
-
-@keyframes slide-in-right {
-    from {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
-}
-
-@keyframes slide-out-right {
-    from {
-        transform: translateX(0);
-        opacity: 1;
-    }
-
-    to {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-}
-
-.slide-in-right {
-    animation: slide-in-right 0.3s ease-out forwards;
-}
-
-.slide-out-right {
-    animation: slide-out-right 0.3s ease-in forwards;
-}
-
-#legend {
-    position: absolute;
-    top: 1rem;
-    left: 3rem;
-    background: white;
-    padding: 0.5rem 1rem;
-    border-radius: 0.5rem;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    z-index: 1000;
-    font-size: 0.9rem;
-}
-
-#marker-confirm-panel {
-    position: absolute;
-    bottom: 1rem;
-    left: 50%;
-    transform: translateX(-50%);
-    background: white;
-    padding: 0.75rem 1.25rem;
-    border-radius: 0.5rem;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    display: none;
-    gap: 1rem;
-    z-index: 1000;
-}
-
-#marker-confirm-panel button {
-    background-color: #22c55e;
-    border: none;
-    color: white;
-    padding: 0.5rem 1rem;
-    border-radius: 0.375rem;
-    cursor: pointer;
-}
-
-#marker-confirm-panel button.cancel {
-    background-color: #ef4444;
-}
-
-.map-link {
-    background-color: #22c55e;
-    font-size: 0.875rem;
-    font-weight: 500;
-    text-decoration: none;
-    color: white !important;
-    position: absolute;
-    bottom: 1.5rem;
-    right: 1rem;
-    padding: 0.5rem 0.75rem;
-    border-radius: 0.5rem;
-    z-index: 5000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 2px solid white;
-    transition: transform 0.2s ease-in-out;
-}
-
-.map-link:hover {
-    transform: scale(1.1);
-}
-
-.custom-cluster-icon {
-    background-color: rgba(0, 123, 255, 0.7);
-    border-radius: 50%;
-    width: 30px;
-    height: 30px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-weight: bold;
-    font-size: 14px;
-    border: 2px solid white;
-    box-shadow: 0 0 6px rgba(0, 0, 0, 0.3);
-    cursor: pointer;
-}
-
-.cluster-marker {
-    width: 100%;
-    height: 100%;
-    text-align: center;
-    line-height: 30px;
-    /* same as height */
-}
-
-@media print {
-    .print-full-height {
-        max-height: none !important;
-        overflow: visible !important;
-    }
-
-    .no-print {
+/*sidebar*/
+/* Hide sidebar toggle button on desktop (>=1275px) */
+@media (min-width: 1900px) {
+    .sidebar-toggle-btn {
         display: none !important;
     }
+
+    /* Sidebar always visible on desktop */
+    .sidebar {
+        transform: translateX(0) !important;
+        position: fixed !important;
+        display: block !important;
+    }
+
+    /* Backdrop hidden on desktop */
+    .sidebar-backdrop {
+        display: none !important;
+    }
+}
+
+/* On mobile (<1275px), sidebar toggles */
+@media (max-width: 1899px) {
+    .sidebar {
+        position: fixed;
+        transition: transform 0.3s ease-in-out;
+    }
+
+        .sidebar.closed {
+            transform: translateX(-100%);
+        }
+
+        .sidebar.open {
+            transform: translateX(0);
+        }
 }

@@ -8,20 +8,37 @@
     <div class="flex flex-col min-h-screen">
         @if (!IsHomePage && !IsAdminBackOffice)
         {
-            <NavBar />
-        } else if (IsAdminBackOffice)
-        {
-            <BackOfficeSideBar />
+            <div class="flex flex-grow h-screen bg-gray-900 ">
+                <Sidebar />
+                <main class="flex-1 flex items-center justify-center">
+                    <article class="w-full">
+                        @Body
+                    </article>
+                </main>
+            </div>
         }
-
-        <main class="@(IsHomePage ? "items-center justify-center" : "flex flex-grow flex-1 items-center justify-center")">
-            <article class="w-full">
-                @Body
-            </article>
-        </main>
+        else if (IsAdminBackOffice)
+        {
+            <div class="flex flex-grow h-screen">
+                <BackOfficeSideBar />
+                <div class="w-px bg-gray-700 h-full"></div>
+                <main class="flex-1 flex items-center justify-center">
+                    <article class="w-full">
+                        @Body
+                    </article>
+                </main>
+            </div>
+        }
+        else
+        {
+            <main class="flex items-center justify-center flex-grow">
+                <article class="w-full">
+                    @Body
+                </article>
+            </main>
+        }
     </div>
 </CascadingAuthenticationState>
-
 
 <script>
     if ('serviceWorker' in navigator) {
@@ -32,6 +49,6 @@
 </script>
 
 @code {
-    private bool IsHomePage => Navigation.Uri.EndsWith("/");
+    private bool IsHomePage => Navigation.Uri.EndsWith("/") || Navigation.Uri.Contains("/login") || Navigation.Uri.Contains("/register") || Navigation.Uri.Contains("/reset-password");
     private bool IsAdminBackOffice => Navigation.Uri.Contains("dashboard");
 }

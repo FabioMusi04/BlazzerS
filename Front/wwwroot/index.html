@@ -32,6 +32,18 @@
 
     <script type="module" src="pushNotifications.js"></script>
     <!--<script src="infiniteScroll.js"></script>-->
+    <script>
+        window.blazorHelpers = {
+            getWindowWidth: function () {
+                return window.innerWidth;
+            },
+            registerResizeCallback: function (dotnetHelper) {
+                window.onresize = () => {
+                    dotnetHelper.invokeMethodAsync('OnBrowserResize', window.innerWidth);
+                };
+            }
+        };
+    </script>
     <script src="_framework/blazor.webassembly.js"></script>
 </body>
 

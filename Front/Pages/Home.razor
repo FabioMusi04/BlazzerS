@@ -1,0 +1,151 @@
+﻿@page "/home"
+
+<div class="min-h-screen bg-gray-900 text-gray-200 px-4 py-8 mx-auto max-w-7xl">
+    <h1 class="text-3xl font-bold mb-6 text-indigo-400">Threads Feed</h1>
+
+    @foreach (var post in Posts)
+    {
+        <PostCard Post="post"
+                  IsCommentsVisible="CommentsVisibleForPost == post.Id"
+                  Comments="GetCommentsForPost(post.Id)"
+                  ToggleComments="ToggleComments"
+                  LikePost="LikePost"
+                  SharePost="SharePost" />
+    }
+</div>
+
+@code {
+    private List<Post> Posts = new()
+    {
+        new Post
+        {
+            Id = 1,
+            Author = "Alice Johnson",
+            AvatarUrl = "https://randomuser.me/api/portraits/women/68.jpg",
+            Timestamp = DateTime.UtcNow.AddMinutes(-10),
+            Content = "Hey everyone! Just finished a cool Blazor project. Loving this framework!",
+            Replies = 3,
+            Likes = 12
+        },
+        new Post
+        {
+            Id = 2,
+            Author = "Bob Smith",
+            AvatarUrl = "https://randomuser.me/api/portraits/men/15.jpg",
+            Timestamp = DateTime.UtcNow.AddHours(-1),
+            Content = "Does anyone have tips for optimizing Blazor server-side performance?",
+            Replies = 7,
+            Likes = 20
+        },
+        new Post
+        {
+            Id = 3,
+            Author = "Carmen Lee",
+            AvatarUrl = "https://randomuser.me/api/portraits/women/22.jpg",
+            Timestamp = DateTime.UtcNow.AddDays(-1),
+            Content = "Just tried the new Tailwind CSS plugin. Styling is so much easier now!",
+            Replies = 2,
+            Likes = 8
+        }
+    }; 
+
+    private Dictionary<int, List<Comment>> PostComments = new()
+    {
+        {
+            1, new List<Comment>()
+            {
+                new Comment
+                {
+                    Author = "David Green",
+                    AvatarUrl = "https://randomuser.me/api/portraits/men/32.jpg",
+                    Content = "Great job Alice! Blazor is really powerful.",
+                    Timestamp = DateTime.UtcNow.AddMinutes(-8)
+                },
+                new Comment
+                {
+                    Author = "Emma White",
+                    AvatarUrl = "https://randomuser.me/api/portraits/women/45.jpg",
+                    Content = "Can't wait to try your project!",
+                    Timestamp = DateTime.UtcNow.AddMinutes(-6)
+                },
+                new Comment
+                {
+                    Author = "Frank Miller",
+                    AvatarUrl = "https://randomuser.me/api/portraits/men/43.jpg",
+                    Content = "Awesome work!",
+                    Timestamp = DateTime.UtcNow.AddMinutes(-4)
+                }
+            }
+        },
+        {
+            2, new List<Comment>()
+            {
+                new Comment
+                {
+                    Author = "Grace Lee",
+                    AvatarUrl = "https://randomuser.me/api/portraits/women/17.jpg",
+                    Content = "Try using virtualization for large data sets.",
+                    Timestamp = DateTime.UtcNow.AddMinutes(-55)
+                },
+                new Comment
+                {
+                    Author = "Harry Brown",
+                    AvatarUrl = "https://randomuser.me/api/portraits/men/26.jpg",
+                    Content = "Also cache frequently used data to reduce calls.",
+                    Timestamp = DateTime.UtcNow.AddMinutes(-50)
+                }
+            }
+        },
+        {
+            3, new List<Comment>()
+            {
+                new Comment
+                {
+                    Author = "Ivy Green",
+                    AvatarUrl = "https://randomuser.me/api/portraits/women/12.jpg",
+                    Content = "Tailwind CSS plugin is a lifesaver, right?",
+                    Timestamp = DateTime.UtcNow.AddHours(-20)
+                },
+                new Comment
+                {
+                    Author = "Jack Black",
+                    AvatarUrl = "https://randomuser.me/api/portraits/men/28.jpg",
+                    Content = "Totally agree with you Carmen!",
+                    Timestamp = DateTime.UtcNow.AddHours(-18)
+                }
+            }
+        }
+    };
+    private int? CommentsVisibleForPost = null;
+
+    private void ToggleComments(int postId)
+    {
+        if (CommentsVisibleForPost == postId)
+            CommentsVisibleForPost = null;
+        else
+            CommentsVisibleForPost = postId;
+    }
+
+    private void LikePost(int postId)
+    {
+        var post = Posts.Find(p => p.Id == postId);
+        if (post != null)
+        {
+            post.Likes++;
+        }
+    }
+
+    private void SharePost(int postId)
+    {
+        Console.WriteLine($"Shared post with ID {postId}");
+    }
+
+    private List<Comment> GetCommentsForPost(int postId)
+    {
+        if (PostComments.TryGetValue(postId, out var comments))
+        {
+            return comments;
+        }
+        return new List<Comment>();
+    }
+}

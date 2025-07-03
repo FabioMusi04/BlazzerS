@@ -1,0 +1,62 @@
+﻿@inject NavigationManager NavigationManager
+
+<div class="bg-gray-800 rounded-2xl shadow-lg p-6 mb-6 hover:shadow-indigo-600/50 transition-shadow duration-300">
+    <div class="flex items-center mb-4 cursor-pointer" @onclick="() => GoToUserProfile(Post.Author)">
+        <img src="@Post.AvatarUrl" alt="@Post.Author" class="w-12 h-12 rounded-full border-2 border-indigo-600" />
+        <div class="ml-4">
+            <p class="font-semibold text-indigo-300">@Post.Author</p>
+            <p class="text-xs text-gray-500">@Post.Timestamp.ToLocalTime().ToString("MMM d, yyyy h:mm tt")</p>
+        </div>
+    </div>
+    <p class="text-gray-300 mb-4 cursor-pointer" @onclick="() => GoToPostDetail(Post.Id)">
+        @Post.Content
+    </p>
+
+    <div class="flex space-x-6 text-gray-400 text-sm">
+        <button class="flex items-center space-x-1 hover:text-indigo-400 transition-colors" @onclick="() => ToggleComments.InvokeAsync(Post.Id)">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M21 16v-5a2 2 0 00-2-2H5a2 2 0 00-2 2v5a2 2 0 002 2h14a2 2 0 002-2z" />
+            </svg>
+            <span>@Post.Replies</span>
+        </button>
+        <button class="flex items-center space-x-1 hover:text-pink-500 transition-colors" @onclick="() => LikePost.InvokeAsync(Post.Id)">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />
+            </svg>
+            <span>@Post.Likes</span>
+        </button>
+        <button class="flex items-center space-x-1 hover:text-indigo-400 transition-colors" @onclick="() => SharePost.InvokeAsync(Post.Id)">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M17 8h2a2 2 0 012 2v8a2 2 0 01-2 2h-2m-5 0H7a2 2 0 01-2-2v-2m0-6h10a2 2 0 012 2v2a2 2 0 01-2 2H7a2 2 0 01-2-2v-2a2 2 0 012-2z" />
+            </svg>
+            <span>Share</span>
+        </button>
+    </div>
+
+    @if (IsCommentsVisible)
+    {
+        <CommentsSection Comments="@Comments" />
+    }
+</div>
+
+@code {
+    [Parameter] public Post Post { get; set; } = default!;
+    [Parameter] public bool IsCommentsVisible { get; set; }
+    [Parameter] public List<Comment> Comments { get; set; } = new();
+
+    [Parameter] public EventCallback<int> ToggleComments { get; set; }
+    [Parameter] public EventCallback<int> LikePost { get; set; }
+    [Parameter] public EventCallback<int> SharePost { get; set; }
+
+    private void GoToUserProfile(string username)
+    {
+        var url = $"/profile/{Uri.EscapeDataString(username)}";
+        NavigationManager.NavigateTo(url);
+    }
+
+    private void GoToPostDetail(int postId)
+    {
+        var url = $"/post/{postId}";
+        NavigationManager.NavigateTo(url);
+    }
+}
