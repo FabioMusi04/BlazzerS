@@ -1,32 +1,23 @@
-﻿window.addScrollListener = (dotnetHelper) => {
-    let isThrottled = false;
+﻿window.initInfiniteScroll = (dotnetHelper, sessionRef/*, postRef*/) => {
+    console.log(dotnetHelper);
+    console.log(sessionRef)
+    const options = { threshold: 1.0 };
 
-    const container = document.getElementById('reportScrollContainer');
-    console.log(container)
-    if (!container) return;
-
-    const onScroll = () => {
-        const scrollTop = container.scrollTop;
-        const scrollHeight = container.scrollHeight;
-        const clientHeight = container.clientHeight;
-
-        console.log(scrollTop + clientHeight >= scrollHeight - 100)
-        console.log(scrollTop + clientHeight)
-        console.log(scrollHeight - 100)
-        if (scrollTop + clientHeight >= scrollHeight - 100) {
-            if (!isThrottled) {
-                isThrottled = true;
-
-                dotnetHelper.invokeMethodAsync('LoadMoreReports')
-                    .finally(() => {
-                        setTimeout(() => {
-                            isThrottled = false;
-                        }, 1000);
-                    });
+    if (sessionRef) {
+        const observer1 = new IntersectionObserver(entries => {
+            if (entries[0].isIntersecting) {
+                dotnetHelper.invokeMethodAsync('OnSessionObserverIntersect');
             }
-        }
-    };
+        }, options);
+        observer1.observe(sessionRef);
+    }
 
-    container.removeEventListener('scroll', onScroll);
-    container.addEventListener('scroll', onScroll);
+    //if (postRef) {
+    //    const observer2 = new IntersectionObserver(entries => {
+    //        if (entries[0].isIntersecting) {
+    //            dotnetHelper.invokeMethodAsync('OnPostObserverIntersect');
+    //        }
+    //    }, options);
+    //    observer2.observe(postRef);
+    //}
 };

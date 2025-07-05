@@ -34,8 +34,6 @@ namespace Back.Services
                 };
             }
 
-            user.Password = "baldman";
-
             if (!user.EmailConfirmed)
             {
                 return new LoginResponse
@@ -82,6 +80,8 @@ namespace Back.Services
             }
 
             await context.SaveChangesAsync();
+
+            user.Password = "baldman";
 
             return new LoginResponse
             {

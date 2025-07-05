@@ -36,7 +36,7 @@ namespace Back.Controllers
         }
 
         [HttpPut("me")]
-        public UserResponse UpdateMe(UserPutModel user)
+        public async Task<UserResponse> UpdateMe(UserPutModel user)
         {
             _logger.LogInformation("UpdateMe request received");
 
@@ -50,7 +50,7 @@ namespace Back.Controllers
                 };
             }
 
-            return _userService.UpdateMeAsync(jwt, user, context);
+            return await _userService.UpdateMeAsync(jwt, user, context);
         }
 
         [HttpPut("me/password")]

@@ -12,7 +12,7 @@ namespace Back.Services
     public interface IUserService
     {
         public UserResponse GetMeAsync(string JWT, ApplicationDbContext context);
-        public UserResponse UpdateMeAsync(string JWT, UserPutModel updatedUser, ApplicationDbContext context);
+        public Task<UserResponse> UpdateMeAsync(string JWT, UserPutModel updatedUser, ApplicationDbContext context);
         public Response UpdateMePasswordAsync(string JWT, string oldPassword, string newPassword, ApplicationDbContext context);
         public Response DeleteMeAsync(string JWT, ApplicationDbContext context);
         public UserResponse GetUserAsync(string JWT, int id, ApplicationDbContext context);
@@ -78,7 +78,7 @@ namespace Back.Services
                 StatusCode = (int)System.Net.HttpStatusCode.OK,
             };
         }
-        public UserResponse UpdateMeAsync(string JWT, UserPutModel updatedUser, ApplicationDbContext context)
+        public async Task<UserResponse> UpdateMeAsync(string JWT, UserPutModel updatedUser, ApplicationDbContext context)
         {
             JwtSecurityTokenHandler handler = new();
             if (!handler.CanReadToken(JWT))
@@ -116,7 +116,7 @@ namespace Back.Services
             user.Role = updatedUser.Role;
             user.UpdatedAt = DateTime.UtcNow;
 
-            context.SaveChanges();
+            await context.SaveChangesAsync();
 
             user.Password = "baldman";
             return new UserResponse

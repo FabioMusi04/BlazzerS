@@ -8,7 +8,7 @@
     <div class="flex flex-col min-h-screen">
         @if (!IsHomePage && !IsAdminBackOffice)
         {
-            <div class="flex flex-grow h-screen bg-gray-900 ">
+            <div class="flex flex-grow bg-gray-900 ">
                 <Sidebar />
                 <main class="flex-1 flex items-center justify-center">
                     <article class="w-full">
@@ -19,7 +19,7 @@
         }
         else if (IsAdminBackOffice)
         {
-            <div class="flex flex-grow h-screen">
+            <div class="flex flex-grow">
                 <BackOfficeSideBar />
                 <div class="w-px bg-gray-700 h-full"></div>
                 <main class="flex-1 flex items-center justify-center">

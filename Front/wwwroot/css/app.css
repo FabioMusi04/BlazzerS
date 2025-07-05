@@ -122,27 +122,25 @@ code {
     text-align: start;
 }
 
-/*sidebar*/
-/* Hide sidebar toggle button on desktop (>=1275px) */
+
 @media (min-width: 1900px) {
     .sidebar-toggle-btn {
         display: none !important;
     }
 
-    /* Sidebar always visible on desktop */
+     Sidebar always visible on desktop 
     .sidebar {
         transform: translateX(0) !important;
         position: fixed !important;
         display: block !important;
     }
 
-    /* Backdrop hidden on desktop */
+     Backdrop hidden on desktop 
     .sidebar-backdrop {
         display: none !important;
     }
 }
 
-/* On mobile (<1275px), sidebar toggles */
 @media (max-width: 1899px) {
     .sidebar {
         position: fixed;
