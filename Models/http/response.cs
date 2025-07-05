@@ -65,4 +65,8 @@ namespace Models.http
     public class NotificationsPaginatedResponse : PagedResponse<Notification>
     {
     }
+
+    public class UserSessionsPaginatedResponse : PagedResponse<UserSession>
+    {
+    }
 }

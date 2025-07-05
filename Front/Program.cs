@@ -31,6 +31,7 @@ namespace Front
             builder.Services.AddScoped<EmailVerificationTokenService>();
             builder.Services.AddScoped<AuthService>();
             builder.Services.AddScoped<UserService>();
+            builder.Services.AddScoped<DeviceService>();
             builder.Services.AddScoped<NotificationService>();
 
             builder.Services.AddAuthorizationCore();

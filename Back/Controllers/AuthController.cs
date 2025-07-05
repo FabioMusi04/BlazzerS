@@ -13,11 +13,13 @@ namespace Back.Controllers
         private readonly ApplicationDbContext context = context;
 
         [HttpPost("login")]
-        public LoginResponse Login(LoginRequest request)
+        public async Task<LoginResponse> Login(LoginRequest request)
         {
             _logger.LogInformation("Login request received for user: {Username}", request.Email);
 
-            LoginResponse response = _authService.LoginAsync(request.Email, request.Password, context);
+            HttpContext httpContext = this.HttpContext;
+
+            LoginResponse response = await _authService.LoginAsync(request.Email, request.Password, context, httpContext);
             if (response.StatusCode != (int)System.Net.HttpStatusCode.OK)
             {
                 _logger.LogWarning("Login failed for user: {Username}. Status code: {StatusCode}, Message: {Message}", request.Email, response.StatusCode, response.Message);
@@ -34,7 +36,7 @@ namespace Back.Controllers
 
             Response.Cookies.Append("access_token", response?.Token, cookieOptions);
 
-            response.Token = null; // Clear token from response to avoid sending it in the response body
+            response.Token = null;
 
             return response;
         }
@@ -45,6 +47,20 @@ namespace Back.Controllers
             _logger.LogInformation("Register request received for user: {Email}", request.Email);
 
             return _authService.RegisterAsync(request, context);
+        }
+
+        [HttpPost("logout/{deviceId?}")]
+        public async Task<Response> Logout(string? deviceId)
+        {
+            _logger.LogInformation("Logout request received");
+            return await _authService.LogoutAsync(deviceId, HttpContext, context);
+        }
+
+        [HttpPost("logout/all")]
+        public async Task<Response> LogoutAll()
+        {
+            _logger.LogInformation("LogoutAll request received");
+            return await _authService.LogoutAllAsync(HttpContext, context);
         }
     }
 }

@@ -297,5 +297,51 @@ namespace Front.Services
                 };
             }
         }
+
+        public async Task<UserSessionsPaginatedResponse> GetAllSessionsMe(UserSessionsPaginatedRequest request)
+        {
+            try
+            {
+                List<string> queryParams =
+                [
+                    $"page={request.Page}",
+                    $"pageSize={request.PageSize}"
+                ];
+                if (!string.IsNullOrWhiteSpace(request.SortField))
+                {
+                    queryParams.Add($"sortField={Uri.EscapeDataString(request.SortField)}");
+                }
+                if (request.SortAscending.HasValue)
+                {
+                    queryParams.Add($"sortAscending={request.SortAscending.Value.ToString().ToLower()}");
+                }
+                string queryString = string.Join("&", queryParams);
+                HttpResponseMessage response = await _http.GetAsync($"api/User/sessions?{queryString}");
+                UserSessionsPaginatedResponse? content = await response.Content.ReadFromJsonAsync<UserSessionsPaginatedResponse>();
+                if (response.IsSuccessStatusCode && content != null)
+                {
+                    return content;
+                }
+                return new UserSessionsPaginatedResponse
+                {
+                    Message = content?.Message ?? "An unknown error occurred.",
+                    StatusCode = content?.StatusCode ?? (int)response.StatusCode,
+                    Page = request.Page,
+                    PageSize = request.PageSize,
+                    Items = []
+                };
+            }
+            catch (Exception ex)
+            {
+                return new UserSessionsPaginatedResponse
+                {
+                    Message = $"Request failed: {ex.Message}",
+                    StatusCode = 500,
+                    Page = request.Page,
+                    PageSize = request.PageSize,
+                    Items = []
+                };
+            }
+        }
     }
 }

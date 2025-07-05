@@ -63,11 +63,11 @@ namespace Front.Services
             }
         }
 
-        public async Task<Response> LogoutAsync()
+        public async Task<Response> LogoutAsync(string? deviceId = null)
         {
             try
             {
-                HttpResponseMessage response = await _http.PostAsync("api/Auth/logout", null);
+                HttpResponseMessage response = await _http.PostAsync($"api/Auth/logout/{deviceId}", null);
                 Response? logoutResponse = await response.Content.ReadFromJsonAsync<Response>();
                 if (response.IsSuccessStatusCode && logoutResponse != null)
                 {
@@ -84,6 +84,32 @@ namespace Front.Services
                 return new Response
                 {
                     Message = $"Unexpected error during logout: {ex.Message}",
+                    StatusCode = 500
+                };
+            }
+        }
+
+        public async Task<Response> LogoutAllAsync()
+        {
+            try
+            {
+                HttpResponseMessage response = await _http.PostAsync("api/Auth/logout/all", null);
+                Response? logoutAllResponse = await response.Content.ReadFromJsonAsync<Response>();
+                if (response.IsSuccessStatusCode && logoutAllResponse != null)
+                {
+                    return logoutAllResponse;
+                }
+                return new Response
+                {
+                    Message = logoutAllResponse?.Message ?? "Logout all failed.",
+                    StatusCode = logoutAllResponse?.StatusCode ?? (int)response.StatusCode
+                };
+            }
+            catch (Exception ex)
+            {
+                return new Response
+                {
+                    Message = $"Unexpected error during logout all: {ex.Message}",
                     StatusCode = 500
                 };
             }

@@ -127,4 +127,9 @@ namespace Models.http
     {
         public NotificationStatusEnum? Status { get; set; } = default!;
     }
+
+    public class UserSessionsPaginatedRequest : PagedRequest
+    {
+        public int? UserId { get; set; } = default!;
+    }
 }

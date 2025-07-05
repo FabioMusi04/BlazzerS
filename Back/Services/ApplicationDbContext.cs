@@ -6,6 +6,7 @@ namespace Back.Services
     public class ApplicationDbContext(DbContextOptions options) : DbContext(options)
     {
         public DbSet<User> Users { get; set; }
+        public DbSet<UserSession> UserSessions { get; set; }
         public DbSet<Notification> Notifications { get; set; }
         public DbSet<EmailVerificationToken> EmailVerificationTokens { get; set; }
         public DbSet<ResetPasswordToken> PasswordResetTokens { get; set; }

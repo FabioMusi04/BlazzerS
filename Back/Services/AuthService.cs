@@ -1,4 +1,6 @@
 ﻿using Back.Services.Helpers;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Primitives;
 using Microsoft.IdentityModel.Tokens;
 using Models;
 using Models.http;
@@ -9,8 +11,10 @@ namespace Back.Services
 {
     public interface IAuthService
     {
-        public LoginResponse LoginAsync(string email, string password, ApplicationDbContext context);
+        public Task<LoginResponse> LoginAsync(string email, string password, ApplicationDbContext context, HttpContext httpContext);
         public Task<RegisterResponse> RegisterAsync(RegisterRequest request, ApplicationDbContext context);
+        public Task<Response> LogoutAsync(string? deviceId, HttpContext httpContext, ApplicationDbContext context);
+        public Task<Response> LogoutAllAsync(HttpContext httpContext, ApplicationDbContext context);
     }
 
     public class AuthService(IEmailService emailService, IConfiguration configuration) : IAuthService
@@ -18,7 +22,7 @@ namespace Back.Services
         private readonly IEmailService _emailService = emailService;
         private readonly IConfiguration _configuration = configuration;
 
-        public LoginResponse LoginAsync(string email, string password, ApplicationDbContext context)
+        public async Task<LoginResponse> LoginAsync(string email, string password, ApplicationDbContext context, HttpContext httpContext)
         {
             User? user = context.Users.FirstOrDefault(u => u.Email == email);
             if (user == null || !BCrypt.Net.BCrypt.Verify(password, user.Password))
@@ -43,6 +47,41 @@ namespace Back.Services
             }
 
             string token = GenerateJwtToken(user);
+            StringValues userAgent = httpContext.Request.Headers.UserAgent;
+            string userAgentValue = userAgent.ToString() ?? "unknown";
+            string deviceId = httpContext.Request.Headers["X-Device-ID"].ToString() ?? "unknown";
+            string ip = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+            var existingSession = await context.UserSessions
+            .FirstOrDefaultAsync(s =>
+                s.UserId == user.Id &&
+                s.DeviceId == deviceId);
+
+            if (existingSession != null)
+            {
+                existingSession.LastAccessedAt = DateTime.UtcNow;
+                existingSession.IPAddress = ip;
+                existingSession.UserAgent = userAgentValue;
+
+                context.UserSessions.Update(existingSession);
+            }
+            else
+            {
+                UserSession newSession = new()
+                {
+                    UserId = user.Id,
+                    IPAddress = ip,
+                    UserAgent = userAgentValue,
+                    LastAccessedAt = DateTime.UtcNow,
+                    CreatedAt = DateTime.UtcNow,
+                    DeviceId = deviceId,
+                    IsActive = true
+                };
+
+                await context.UserSessions.AddAsync(newSession);
+            }
+
+            await context.SaveChangesAsync();
 
             return new LoginResponse
             {
@@ -88,6 +127,94 @@ namespace Back.Services
                 UserId = user.Id,
             };
         }
+        public async Task<Response> LogoutAsync(string? devicePassedId, HttpContext httpContext, ApplicationDbContext context)
+        {
+            string? jwt = Utils.GetJwt(httpContext);
+            if (string.IsNullOrEmpty(jwt))
+            {
+                return new Response
+                {
+                    StatusCode = (int)System.Net.HttpStatusCode.Unauthorized,
+                    Message = "Authorization header is missing or invalid."
+                };
+            }
+
+            JwtSecurityTokenHandler tokenHandler = new();
+            if (tokenHandler.ReadToken(jwt) is not SecurityToken token)
+            {
+                return new Response
+                {
+                    StatusCode = (int)System.Net.HttpStatusCode.Unauthorized,
+                    Message = "Invalid JWT token."
+                };
+            }
+
+            ClaimsPrincipal principal = tokenHandler.ValidateToken(jwt, new TokenValidationParameters
+            {
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = new SymmetricSecurityKey(new System.Text.UTF8Encoding().GetBytes("baldman_eroe_notturno_gey_che_combatte_contro_gli_etero")),
+                ValidateIssuer = false,
+                ValidateAudience = false,
+                ClockSkew = TimeSpan.Zero
+            }, out _);
+
+            string deviceId = devicePassedId ?? httpContext.Request.Headers["X-Device-ID"].ToString() ?? "unknown";
+
+
+            int userId = int.Parse(principal.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+
+            var sessionsToRemove = context.UserSessions.Where(s => s.UserId == userId && deviceId == s.DeviceId).ToList();
+
+            context.UserSessions.RemoveRange(sessionsToRemove);
+            await context.SaveChangesAsync();
+            return new Response
+            {
+                StatusCode = (int)System.Net.HttpStatusCode.OK,
+                Message = "Logout successful."
+            };
+        }
+
+        public async Task<Response> LogoutAllAsync(HttpContext httpContext, ApplicationDbContext context)
+        {
+            string? jwt = Utils.GetJwt(httpContext);
+            if (string.IsNullOrEmpty(jwt))
+            {
+                return new Response
+                {
+                    StatusCode = (int)System.Net.HttpStatusCode.Unauthorized,
+                    Message = "Authorization header is missing or invalid."
+                };
+            }
+
+            JwtSecurityTokenHandler tokenHandler = new();
+            if (tokenHandler.ReadToken(jwt) is not SecurityToken token)
+            {
+                return new Response
+                {
+                    StatusCode = (int)System.Net.HttpStatusCode.Unauthorized,
+                    Message = "Invalid JWT token."
+                };
+            }
+
+            ClaimsPrincipal principal = tokenHandler.ValidateToken(jwt, new TokenValidationParameters
+            {
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = new SymmetricSecurityKey(new System.Text.UTF8Encoding().GetBytes("baldman_eroe_notturno_gey_che_combatte_contro_gli_etero")),
+                ValidateIssuer = false,
+                ValidateAudience = false,
+                ClockSkew = TimeSpan.Zero
+            }, out _);
+
+            int userId = int.Parse(principal.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            var sessionsToRemove = context.UserSessions.Where(s => s.UserId == userId).ToList();
+            context.UserSessions.RemoveRange(sessionsToRemove);
+            await context.SaveChangesAsync();
+            return new Response
+            {
+                StatusCode = (int)System.Net.HttpStatusCode.OK,
+                Message = "Logout from all devices successful."
+            };
+        }
 
         private static string GenerateJwtToken(User user)
         {
@@ -112,5 +239,6 @@ namespace Back.Services
             SecurityToken token = tokenHandler.CreateToken(tokenDescriptor);
             return tokenHandler.WriteToken(token);
         }
+
     }
 }

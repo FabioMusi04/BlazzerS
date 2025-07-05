@@ -1,0 +1,274 @@
+﻿@page "/profile"
+@inject NavigationManager Navigation
+@inject UserService UserService
+@inject AuthService AuthService
+
+<PageTitle>Profile</PageTitle>
+
+<div class="max-w-4xl mx-auto p-6 space-y-8 text-white">
+    <Alert AlertData="@AlertData" OnDismissed="@(() => AlertData.IsVisible = false)" />
+    <Alert AlertData="@AlertData2" OnDismissed="@(() => AlertData2.IsVisible = false)" />
+
+    <div class="flex items-center gap-4 border-b pb-4">
+        <img src="https://i.pravatar.cc/100" class="w-20 h-20 rounded-full border" alt="Profile" />
+        <div>
+            @if (IsLoadingUser)
+            {
+                <span class="text-gray-400">Loading user...</span>
+            }
+            else if (UserData != null)
+            {
+                <div class="space-y-1">
+                    <input class="bg-gray-800 border p-1 rounded w-full" @bind="UserData.Name" placeholder="Name" />
+                    <input class="bg-gray-800 border p-1 rounded w-full" @bind="UserData.Surname" placeholder="Surname" />
+                    <input class="bg-gray-800 border p-1 rounded w-full" value="@UserData.Email" disabled />
+                    <p class="text-xs text-gray-400">Email confirmed: @UserData.EmailConfirmed</p>
+                    <button class="mt-2 px-4 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white"
+                            disabled="@IsSaving"
+                            @onclick="SaveUser">
+                        @if (IsSaving)
+                        {
+                            <span class="animate-spin mr-2">🔄</span>
+                            <span>Saving...</span>
+                        }
+                        else
+                        {
+                            <span>Save Changes</span>
+                        }
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div>
+        <h2 class="text-xl font-semibold mb-2">Your Threads</h2>
+        @if (IsLoadingPosts)
+        {
+            <p class="text-gray-400">Loading posts...</p>
+        }
+        else if (!Posts.Any())
+        {
+            <p class="text-gray-400">You haven’t posted anything yet.</p>
+        }
+        else
+        {
+            @foreach (var post in Posts)
+            {
+                <div class="border rounded-xl p-4 mb-4 bg-white text-black shadow-sm">
+                    <p>@post.Content</p>
+                    <span class="text-sm text-gray-400">@post.CreatedAt.ToLocalTime().ToString("g")</span>
+                </div>
+            }
+        }
+    </div>
+
+    <div>
+        <h2 class="text-xl font-semibold mb-2">Active Devices</h2>
+        @if (IsLoadingSessions)
+        {
+            <p class="text-gray-400">Loading sessions...</p>
+        }
+        else if (!Sessions.Any())
+        {
+            <p class="text-gray-400">No active sessions found.</p>
+        }
+        else
+        {
+            <div class="space-y-3">
+                @foreach (var session in Sessions)
+                {
+                    <div class="flex justify-between items-center p-3 border rounded-lg bg-gray-100 text-black">
+                        <div>
+                            <p class="text-sm font-medium">IP: @session.IPAddress</p>
+                            <p class="text-sm text-gray-500">Device: @session.UserAgent</p>
+                            <p class="text-xs text-gray-400">Last seen: @session.LastAccessedAt?.ToLocalTime().ToString("g")</p>
+                        </div>
+                        <button class="text-sm bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded disabled:opacity-50"
+                                disabled="@IsProcessing"
+                                @onclick="@(() => LogoutDevice(session.DeviceId))">
+                            @if (IsProcessing)
+                            {
+                                <span class="animate-spin">⏳</span>
+                            }
+                            else
+                            {
+                                <span>Logout</span>
+                            }
+                        </button>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    User? UserData = null;
+    List<Post> Posts = new();
+    List<UserSession> Sessions = new();
+
+    private AlertModel AlertData = new();
+    private AlertModel AlertData2 = new();
+
+    private bool IsLoadingUser = true;
+    private bool IsLoadingPosts = true;
+    private bool IsLoadingSessions = true;
+    private bool IsSaving = false;
+    private bool IsProcessing = false;
+
+    UserSessionsPaginatedRequest UsersPaginatedRequest = new()
+    {
+        Page = 1,
+        PageSize = 10
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            IsLoadingUser = true;
+            var response = await UserService.GetMeAsync();
+            if (response.StatusCode is >= 200 and < 300)
+            {
+                UserData = response.User;
+            }
+            else
+            {
+                Navigation.NavigateTo("/login");
+                return;
+            }
+        }
+        finally
+        {
+            IsLoadingUser = false;
+        }
+
+        try
+        {
+            IsLoadingPosts = true;
+            // Replace with real fetch when ready
+            Posts = new List<Post>
+            {
+                new Post { Content = "Welcome to Threads!", CreatedAt = DateTime.Now.AddDays(-1) },
+                new Post { Content = "This is your second post.", CreatedAt = DateTime.Now.AddHours(-2) }
+            };
+        }
+        finally
+        {
+            IsLoadingPosts = false;
+        }
+
+        try
+        {
+            IsLoadingSessions = true;
+            var sessionsResponse = await UserService.GetAllSessionsMe(UsersPaginatedRequest);
+            if (sessionsResponse.StatusCode is >= 200 and < 300)
+            {
+                Sessions = sessionsResponse.Items.ToList();
+            }
+            else
+            {
+                AlertData = new()
+                {
+                    IsVisible = true,
+                    Style = AlertTypeEnum.Danger,
+                    Message = "Failed to load sessions. Please try again later.",
+                    Title = "Error",
+                    Position = AlertStylePositionEnum.BottomRight
+                };
+            }
+        }
+        finally
+        {
+            IsLoadingSessions = false;
+        }
+    }
+
+    private async Task SaveUser()
+    {
+        if (UserData == null) return;
+
+        try
+        {
+            IsSaving = true;
+            var result = await UserService.UpdateMeAsync(new UserPutModel()
+            {
+                Name = UserData.Name,
+                Surname = UserData.Surname,
+                UpdatedAt = DateTime.UtcNow
+            });
+            if (result.StatusCode is >= 200 and < 300)
+            {
+                AlertData = new()
+                {
+                    IsVisible = true,
+                    Style = AlertTypeEnum.Information,
+                    Message = "Profile updated successfully.",
+                    Title = "Saved",
+                    Position = AlertStylePositionEnum.BottomRight
+                };
+            }
+            else
+            {
+                AlertData = new()
+                {
+                    IsVisible = true,
+                    Style = AlertTypeEnum.Danger,
+                    Message = result.Message,
+                    Title = "Save Failed",
+                    Position = AlertStylePositionEnum.BottomRight
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            AlertData = new()
+            {
+                IsVisible = true,
+                Style = AlertTypeEnum.Danger,
+                Message = $"An error occurred: {ex.Message}",
+                Title = "Error",
+                Position = AlertStylePositionEnum.BottomRight
+            };
+        }
+        finally
+        {
+            IsSaving = false;
+        }
+    }
+
+    private async Task LogoutDevice(string deviceId)
+    {
+        try
+        {
+            IsProcessing = true;
+            var response = await AuthService.LogoutAsync(deviceId);
+            if (response.StatusCode is >= 200 and < 300)
+            {
+                Sessions = Sessions.Where(s => s.DeviceId != deviceId).ToList();
+            }
+            else
+            {
+                AlertData2 = new()
+                {
+                    IsVisible = true,
+                    Style = AlertTypeEnum.Danger,
+                    Message = "Failed to logout device. Please try again.",
+                    Title = "Logout Error",
+                    Position = AlertStylePositionEnum.BottomRight
+                };
+            }
+        }
+        finally
+        {
+            IsProcessing = false;
+        }
+    }
+
+    public class Post
+    {
+        public string Content { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; }
+    }
+}

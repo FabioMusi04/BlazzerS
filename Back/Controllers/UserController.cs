@@ -1,9 +1,9 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Back.Services;
+using Back.Services.Helpers;
+using Microsoft.AspNetCore.Mvc;
 using Models;
 using Models.front;
 using Models.http;
-using Back.Services;
-using Back.Services.Helpers;
 
 namespace Back.Controllers
 {
@@ -189,6 +189,22 @@ namespace Back.Controllers
                 };
             }
             return _userService.ResetPasswordAsync(token, resetPasswordForm.NewPassword, context);
+        }
+
+        [HttpGet("sessions")]
+        public PagedResponse<UserSession> GetUserSessions([FromQuery] UserSessionsPaginatedRequest request)
+        {
+            _logger.LogInformation($"GetUserSessions request received with parameters: Page={request.Page}, PageSize={request.PageSize}, UserId={request.UserId}");
+            string? jwt = Utils.GetJwt(HttpContext);
+            if (string.IsNullOrEmpty(jwt))
+            {
+                return new PagedResponse<UserSession>
+                {
+                    StatusCode = (int)System.Net.HttpStatusCode.Unauthorized,
+                    Message = "Authorization header is missing or invalid."
+                };
+            }
+            return _userService.GetUserSessionsPaginationAsync(jwt, request, context);
         }
     }
 }

@@ -22,6 +22,7 @@ namespace Back.Services
         public Task<Response> CreateResetPasswordRequestAsync(string email, ApplicationDbContext context, IConfiguration configuration, IEmailService emailService);
         public Response VerifyResetPasswordAsync(string token, ApplicationDbContext context);
         public Response ResetPasswordAsync(string token, string newPassword, ApplicationDbContext context);
+        public UserSessionsPaginatedResponse GetUserSessionsPaginationAsync(string JWT, UserSessionsPaginatedRequest request, ApplicationDbContext context);
     }
 
     public class UserService : IUserService
@@ -607,6 +608,72 @@ namespace Back.Services
             {
                 StatusCode = (int)System.Net.HttpStatusCode.OK,
                 Message = "Password reset successfully."
+            };
+        }
+
+        public UserSessionsPaginatedResponse GetUserSessionsPaginationAsync(string JWT, UserSessionsPaginatedRequest request, ApplicationDbContext context)
+        {
+            JwtSecurityTokenHandler handler = new();
+            if (!handler.CanReadToken(JWT))
+            {
+                return new UserSessionsPaginatedResponse
+                {
+                    StatusCode = (int)System.Net.HttpStatusCode.BadRequest,
+                    Message = "JWT not valid."
+                };
+            }
+
+            JwtSecurityToken token = handler.ReadJwtToken(JWT);
+            Claim? userIdClaim = token.Claims.FirstOrDefault(c => c.Type == "nameid");
+            if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out var userId))
+            {
+                return new UserSessionsPaginatedResponse
+                {
+                    StatusCode = (int)System.Net.HttpStatusCode.BadRequest,
+                    Message = "JWT does not contain user ID."
+                };
+            }
+
+            User? currentUser = context.Users.FirstOrDefault(u => u.Id == userId);
+            if (currentUser == null)
+            {
+                return new UserSessionsPaginatedResponse
+                {
+                    StatusCode = (int)System.Net.HttpStatusCode.NotFound,
+                    Message = "Authenticated user not found."
+                };
+            }
+
+            IQueryable<UserSession> query = context.UserSessions.AsQueryable();
+            if (request.UserId != null && request.UserId > 0)
+            {
+                query = query.Where(us => us.UserId == request.UserId.Value);
+            }
+
+            if (!string.IsNullOrEmpty(request.SortField))
+            {
+                if (request.SortAscending ?? true)
+                {
+                    query = query.OrderBy(us => EF.Property<object>(us, request.SortField));
+                }
+                else
+                {
+                    query = query.OrderByDescending(us => EF.Property<object>(us, request.SortField));
+                }
+            }
+
+            List<UserSession> sessions = [.. query
+                .Skip((request.Page - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .AsEnumerable()];
+
+            return new UserSessionsPaginatedResponse
+            {
+                Items = sessions,
+                Page = request.Page,
+                PageSize = request.PageSize,
+                TotalCount = query.Count(),
+                StatusCode = (int)System.Net.HttpStatusCode.OK
             };
         }
     }
