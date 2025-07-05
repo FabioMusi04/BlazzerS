@@ -1,7 +1,7 @@
-﻿using Microsoft.IdentityModel.Tokens;
+﻿using Back.Services.Helpers;
+using Microsoft.IdentityModel.Tokens;
 using Models;
 using Models.http;
-using Back.Services.Helpers;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 

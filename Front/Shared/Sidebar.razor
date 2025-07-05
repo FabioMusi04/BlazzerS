@@ -1,7 +1,7 @@
 ﻿@using Microsoft.AspNetCore.Components.Authorization
-@inject Blazored.LocalStorage.ILocalStorageService LocalStorage
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthProvider
+@inject AuthService AuthService
 @implements IDisposable
 @inject IJSRuntime JS
 
@@ -83,22 +83,12 @@
 
     private async Task LogOut()
     {
-        await LocalStorage.RemoveItemAsync("token");
-        await LocalStorage.RemoveItemAsync("user");
+        await AuthService.LogoutAsync();
 
         if (AuthProvider is CustomAuthStateProvider customProvider)
         {
             customProvider.NotifyUserLogout();
         }
-
-        AlertData = new AlertModel
-        {
-            IsVisible = true,
-            Style = AlertTypeEnum.Information,
-            Message = "You have been logged out successfully.",
-            Title = "Logged Out",
-            Position = AlertStylePositionEnum.BottomRight,
-        };
 
         Navigation.NavigateTo("/login");
         CloseSidebar();

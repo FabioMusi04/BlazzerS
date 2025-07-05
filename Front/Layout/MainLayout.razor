@@ -49,6 +49,6 @@
 </script>
 
 @code {
-    private bool IsHomePage => Navigation.Uri.EndsWith("/") || Navigation.Uri.Contains("/login") || Navigation.Uri.Contains("/register") || Navigation.Uri.Contains("/reset-password");
+    private bool IsHomePage => Navigation.Uri.EndsWith("/") || Navigation.Uri.Contains("/login") || Navigation.Uri.Contains("/register") || Navigation.Uri.Contains("/reset-password") || Navigation.Uri.Contains("/verify-email");
     private bool IsAdminBackOffice => Navigation.Uri.Contains("dashboard");
 }

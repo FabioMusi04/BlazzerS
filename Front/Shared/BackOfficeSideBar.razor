@@ -1,7 +1,7 @@
-@inject Blazored.LocalStorage.ILocalStorageService LocalStorage
-@inject NavigationManager Navigation
+@* @inject NavigationManager Navigation
 @inject CustomAuthStateProvider AuthProvider
 @inject IConfiguration Configuration
+@inject AuthService AuthService
 
 <div class="fixed top-0 left-0 h-screen w-64 bg-white border-r shadow-lg z-5000 transition-transform duration-300 ease-in-out transform"
      style="transform:@(!IsOpen ? "translateX(-100%)" : "translateX(0)")">
@@ -74,14 +74,13 @@
 
     private async Task LogOut()
     {
-        await LocalStorage.RemoveItemAsync("token");
-        await LocalStorage.RemoveItemAsync("user");
+        await AuthService.LogoutAsync();
 
         if (AuthProvider is CustomAuthStateProvider customProvider)
         {
             customProvider.NotifyUserLogout();
         }
-        
+
         Navigation.NavigateTo("/login");
     }
 
@@ -106,3 +105,4 @@
 };
 
 }
+ *@

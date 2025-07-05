@@ -1,6 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Back.Services;
+using Microsoft.AspNetCore.Mvc;
 using Models.http;
-using Back.Services;
 
 namespace Back.Controllers
 {
@@ -17,7 +17,26 @@ namespace Back.Controllers
         {
             _logger.LogInformation("Login request received for user: {Username}", request.Email);
 
-            return _authService.LoginAsync(request.Email, request.Password, context);
+            LoginResponse response = _authService.LoginAsync(request.Email, request.Password, context);
+            if (response.StatusCode != (int)System.Net.HttpStatusCode.OK)
+            {
+                _logger.LogWarning("Login failed for user: {Username}. Status code: {StatusCode}, Message: {Message}", request.Email, response.StatusCode, response.Message);
+                return response;
+            }
+
+            CookieOptions cookieOptions = new()
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.None,
+                Expires = DateTime.UtcNow.AddMinutes(15)
+            };
+
+            Response.Cookies.Append("access_token", response?.Token, cookieOptions);
+
+            response.Token = null; // Clear token from response to avoid sending it in the response body
+
+            return response;
         }
 
         [HttpPost("register")]

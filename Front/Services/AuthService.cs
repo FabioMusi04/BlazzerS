@@ -3,9 +3,9 @@ using System.Net.Http.Json;
 
 namespace Front.Services
 {
-    public class AuthService(HttpClient http)
+    public class AuthService(IHttpClientFactory factory)
     {
-        private readonly HttpClient _http = http;
+        private readonly HttpClient _http = factory.CreateClient("AuthorizedClient");
 
         public async Task<RegisterResponse> RegisterAsync(RegisterRequest registerRequest)
         {
@@ -63,5 +63,30 @@ namespace Front.Services
             }
         }
 
+        public async Task<Response> LogoutAsync()
+        {
+            try
+            {
+                HttpResponseMessage response = await _http.PostAsync("api/Auth/logout", null);
+                Response? logoutResponse = await response.Content.ReadFromJsonAsync<Response>();
+                if (response.IsSuccessStatusCode && logoutResponse != null)
+                {
+                    return logoutResponse;
+                }
+                return new Response
+                {
+                    Message = logoutResponse?.Message ?? "Logout failed.",
+                    StatusCode = logoutResponse?.StatusCode ?? (int)response.StatusCode
+                };
+            }
+            catch (Exception ex)
+            {
+                return new Response
+                {
+                    Message = $"Unexpected error during logout: {ex.Message}",
+                    StatusCode = 500
+                };
+            }
+        }
     }
 }

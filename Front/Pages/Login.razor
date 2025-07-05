@@ -2,19 +2,16 @@
 
 @using Models.front
 @using Models.http
-@using System.Text.Json
-@using Front.Shared;
+@using Front.Shared
 
-@inject Blazored.LocalStorage.ILocalStorageService localStorage
 @inject AuthService authService
 @inject EmailVerificationTokenService tokenVerificationService
 @inject NavigationManager Navigation
-@inject CustomAuthStateProvider _authStateProvider
+@inject CustomAuthStateProvider authStateProvider
 
 <div class="min-h-screen flex items-center justify-center bg-gray-800 px-4">
     <Alert AlertData="@AlertData" OnDismissed="@(() => AlertData.IsVisible = false)" />
     <Alert AlertData="@AlertData2" OnDismissed="@(() => AlertData2.IsVisible = false)" />
-
     <LoginForm OnLogin="HandleLogin" />
 </div>
 
@@ -24,38 +21,11 @@
     private AlertModel AlertData = new();
     private AlertModel AlertData2 = new();
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            string? token = await localStorage.GetItemAsync<string>("token");
-            if (!string.IsNullOrEmpty(token))
-            {
-                string? userJson = await localStorage.GetItemAsync<string>("user");
-                if (!string.IsNullOrEmpty(userJson))
-                {
-                    User? user = JsonSerializer.Deserialize<User>(userJson);
-                    if (user != null)
-                    {
-                        if (user.Role == UserRoleEnum.Admin)
-                        {
-                            Navigation.NavigateTo("/dashboard");
-                        }
-                        else
-                        {
-                            Navigation.NavigateTo("/home");
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     private async Task HandleLogin(LoginFormModel model)
     {
         LoginResponse result = await authService.LoginAsync(model.Email, model.Password);
 
-        if (result != null && (result.StatusCode >= 200 && result.StatusCode <= 299) && !string.IsNullOrEmpty(result.Token))
+        if (result is { StatusCode: >= 200 and <= 299 })
         {
             AlertData = new AlertModel
             {
@@ -66,19 +36,12 @@
                 Position = AlertStylePositionEnum.BottomRight,
             };
 
-            await localStorage.SetItemAsync("token", result.Token);
-            await localStorage.SetItemAsync("user", JsonSerializer.Serialize(result.User));
-
-            ((CustomAuthStateProvider)_authStateProvider).NotifyUserAuthentication(result.Token);
+            await authStateProvider.ForceAuthenticationStateRefreshAsync();
 
             if (result.User.Role == UserRoleEnum.Admin)
-            {
                 Navigation.NavigateTo("/dashboard");
-            }
             else
-            {
                 Navigation.NavigateTo("/home");
-            }
         }
         else
         {
@@ -91,7 +54,7 @@
                 Position = AlertStylePositionEnum.BottomRight,
             };
 
-            if (result?.StatusCode == 403 && result.User != null)
+            if (result?.StatusCode == 403 && result.User is not null)
             {
                 userId = result.User.Id;
 

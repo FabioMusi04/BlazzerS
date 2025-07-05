@@ -1,22 +1,22 @@
-﻿using Models;
+﻿using Back.Services.AppwriteIO;
+using Models;
 using Models.enums;
 using Models.http;
-using Back.Services.AppwriteIO;
 
 namespace Back.Services.Helpers
 {
     public static class Utils
     {
-        public static string? GetJwt(HttpContext httpcontext)
+        public static string? GetJwt(HttpContext httpContext)
         {
-            string? authHeader = httpcontext.Request.Headers.Authorization.FirstOrDefault();
-            if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
+            if (httpContext.Request.Cookies.TryGetValue("access_token", out var token))
             {
-                return null;
+                return token;
             }
 
-            return authHeader["Bearer ".Length..].Trim();
+            return null;
         }
+
 
         public static async Task GenerateNewVerificationToken(User user, ApplicationDbContext context, IConfiguration configuration, IEmailService emailService)
         {

@@ -1,4 +1,3 @@
-using Blazored.LocalStorage;
 using Front.Services;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
@@ -21,18 +20,13 @@ namespace Front
                 throw new InvalidOperationException("ApiBaseAddress configuration is missing or empty.");
             }
 
-            builder.Services.AddScoped(sp => new HttpClient
-            {
-                BaseAddress = new Uri(apiBase),
-            });
-
-            builder.Services.AddTransient<AuthHeaderHandler>();
+            builder.Services.AddTransient<CookieHandler>()
+                .AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("AuthorizedClient"));
 
             builder.Services.AddHttpClient("AuthorizedClient", client =>
             {
                 client.BaseAddress = new Uri(apiBase);
-            })
-            .AddHttpMessageHandler<AuthHeaderHandler>();
+            }).AddHttpMessageHandler<CookieHandler>();
 
             builder.Services.AddScoped<EmailVerificationTokenService>();
             builder.Services.AddScoped<AuthService>();
@@ -43,8 +37,6 @@ namespace Front
 
             builder.Services.AddScoped<CustomAuthStateProvider>();
             builder.Services.AddScoped<AuthenticationStateProvider>(provider => provider.GetRequiredService<CustomAuthStateProvider>());
-
-            builder.Services.AddBlazoredLocalStorage();
 
             await builder.Build().RunAsync();
         }
