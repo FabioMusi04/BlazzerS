@@ -1,4 +1,5 @@
-﻿using Back.Services.Helpers;
+﻿using Back.Services.AppwriteIO;
+using Back.Services.Helpers;
 using Microsoft.EntityFrameworkCore;
 using Models;
 using Models.enums;
@@ -13,6 +14,7 @@ namespace Back.Services
     {
         public UserResponse GetMeAsync(string JWT, ApplicationDbContext context);
         public Task<UserResponse> UpdateMeAsync(string JWT, UserPutModel updatedUser, ApplicationDbContext context);
+        public Task<UserResponse> UpdateMeProfilePicture(string JWT, UploadFileRequest file, ApplicationDbContext context, IUploadFileService uploadFileService, IAppwriteClient appwriteClient);
         public Response UpdateMePasswordAsync(string JWT, string oldPassword, string newPassword, ApplicationDbContext context);
         public Response DeleteMeAsync(string JWT, ApplicationDbContext context);
         public UserResponse GetUserAsync(string JWT, int id, ApplicationDbContext context);
@@ -61,7 +63,7 @@ namespace Back.Services
                 };
             }
 
-            User? user = context.Users.FirstOrDefault(u => u.Id == userId);
+            User? user = context.Users.Include(u => u.ProfileImage).FirstOrDefault(u => u.Id == userId);
             if (user == null)
             {
                 return new UserResponse
@@ -674,6 +676,64 @@ namespace Back.Services
                 PageSize = request.PageSize,
                 TotalCount = query.Count(),
                 StatusCode = (int)System.Net.HttpStatusCode.OK
+            };
+        }
+
+        public async Task<UserResponse> UpdateMeProfilePicture(string JWT, UploadFileRequest file, ApplicationDbContext context, IUploadFileService uploadFileService, IAppwriteClient appwriteClient)
+        {
+            JwtSecurityTokenHandler handler = new();
+            if (!handler.CanReadToken(JWT))
+            {
+                return new UserResponse
+                {
+                    StatusCode = (int)System.Net.HttpStatusCode.BadRequest,
+                    Message = "JWT not valid."
+                };
+            }
+
+            JwtSecurityToken token = handler.ReadJwtToken(JWT);
+            Claim? userIdClaim = token.Claims.FirstOrDefault(c => c.Type == "nameid");
+            if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out var userId))
+            {
+                return new UserResponse
+                {
+                    StatusCode = (int)System.Net.HttpStatusCode.BadRequest,
+                    Message = "JWT does not contain user ID."
+                };
+            }
+
+            User? currentUser = context.Users.FirstOrDefault(u => u.Id == userId);
+            if (currentUser == null)
+            {
+                return new UserResponse
+                {
+                    StatusCode = (int)System.Net.HttpStatusCode.NotFound,
+                    Message = "Authenticated user not found."
+                };
+            }
+
+            UploadFileResponse uploadedFile = await uploadFileService.CreateUploadFile(file, context, JWT, appwriteClient);
+            if (uploadedFile.StatusCode < 200 && uploadedFile.StatusCode >= 300)
+            {
+                return new UserResponse
+                {
+                    StatusCode = uploadedFile.StatusCode,
+                    Message = uploadedFile.Message
+                };
+            }
+
+            currentUser.ProfileImageId = uploadedFile.File.Id;
+
+            context.Update(currentUser);
+            await context.SaveChangesAsync();
+
+            currentUser.Password = "baldman";
+
+            return new UserResponse
+            {
+                User = currentUser,
+                StatusCode = (int)System.Net.HttpStatusCode.OK,
+                Message = "Profile picture updated successfully."
             };
         }
     }

@@ -1,4 +1,5 @@
 ﻿using Back.Services;
+using Back.Services.AppwriteIO;
 using Back.Services.Helpers;
 using Microsoft.AspNetCore.Mvc;
 using Models;
@@ -9,13 +10,16 @@ namespace Back.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class UserController(ILogger<UserController> logger, IUserService userService, IConfiguration configuration, IEmailService emailService, ApplicationDbContext context) : Controller
+    public class UserController(ILogger<UserController> logger, IUserService userService, IConfiguration configuration, IEmailService emailService, ApplicationDbContext context, IAppwriteClient appwriteClient, IUploadFileService uploadFileService) : Controller
     {
         private readonly ILogger<UserController> _logger = logger;
         private readonly IUserService _userService = userService;
         private readonly IConfiguration _configuration = configuration;
         private readonly IEmailService _emailService = emailService;
+        private readonly IAppwriteClient _appwriteClient = appwriteClient;
+        private readonly IUploadFileService _uploadFileService = uploadFileService;
         private readonly ApplicationDbContext context = context;
+
 
         [HttpGet("me")]
         public UserResponse GetMe()
@@ -51,6 +55,28 @@ namespace Back.Controllers
             }
 
             return await _userService.UpdateMeAsync(jwt, user, context);
+        }
+
+        [HttpPut("me/profilePicture")]
+        public async Task<UserResponse> UpdateMeProfilePicture(IFormFile file)
+        {
+            _logger.LogInformation("UpdateMeProfilePicture request received");
+            string? jwt = Utils.GetJwt(HttpContext);
+            if (string.IsNullOrEmpty(jwt))
+            {
+                return new UserResponse
+                {
+                    StatusCode = (int)System.Net.HttpStatusCode.Unauthorized,
+                    Message = "Authorization header is missing or invalid."
+                };
+            }
+
+            var request = new UploadFileRequest
+            {
+                File = file
+            };
+
+            return await _userService.UpdateMeProfilePicture(jwt, request, context, _uploadFileService, _appwriteClient);
         }
 
         [HttpPut("me/password")]

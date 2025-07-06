@@ -1,5 +1,6 @@
 using Models.enums;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Models
 {
@@ -29,11 +30,15 @@ namespace Models
 
         public bool EmailConfirmed { get; set; } = false;
 
+        public int? ProfileImageId = default!;
+
         public UserRoleEnum Role { get; set; } = UserRoleEnum.User;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
+        [ForeignKey(nameof(ProfileImageId))]
+        public virtual UploadFile ProfileImage { get; set; } = default!;
     }
 }

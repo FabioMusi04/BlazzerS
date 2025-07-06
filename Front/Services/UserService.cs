@@ -1,5 +1,6 @@
 using Models.front;
 using Models.http;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 
 namespace Front.Services
@@ -343,5 +344,35 @@ namespace Front.Services
                 };
             }
         }
+
+        public async Task<UserResponse> UpdateProfilePictureAsync(Stream fileStream, string fileName, string contentType)
+        {
+            try
+            {
+                var content = new MultipartFormDataContent();
+                var fileContent = new StreamContent(fileStream);
+                fileContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+
+                content.Add(fileContent, "file", fileName);
+
+                var response = await _http.PutAsync("api/User/me/profilePicture", content);
+                var result = await response.Content.ReadFromJsonAsync<UserResponse>();
+
+                return result ?? new UserResponse
+                {
+                    Message = "No response content",
+                    StatusCode = (int)response.StatusCode
+                };
+            }
+            catch (Exception ex)
+            {
+                return new UserResponse
+                {
+                    Message = $"Request failed: {ex.Message}",
+                    StatusCode = 500
+                };
+            }
+        }
+
     }
 }
