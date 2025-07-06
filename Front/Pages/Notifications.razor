@@ -1,0 +1,124 @@
+﻿@page "/notifications"
+@inject NotificationService NotificationService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Notifications</PageTitle>
+
+<div class="text-white max-w-3xl mx-auto px-4 py-6 min-h-screen">
+    <h1 class="text-2xl font-bold mb-6">Notifications</h1>
+
+    @if (IsLoading && MyNotifications.Count == 0)
+    {
+        <p class="text-gray-400">Loading...</p>
+    }
+    else if (!MyNotifications.Any())
+    {
+        <p class="text-gray-400">You have no notifications yet.</p>
+    }
+    else
+    {
+        <div class="space-y-10 h-[80vh] overflow-y-auto pr-2">
+            @foreach (var group in GroupedNotifications)
+            {
+                <div>
+                    <h2 class="text-sm text-gray-400 uppercase mb-3 border-b border-gray-700 pb-1">@group.Key</h2>
+
+                    <div class="space-y-3">
+                        @foreach (var notification in group.Value)
+                        {
+                            <div class="p-4 bg-gray-900 rounded-xl shadow hover:bg-gray-800 transition">
+                                <p class="text-sm font-semibold">@notification.Title</p>
+                                <p class="text-sm text-gray-300">@notification.Message</p>
+                                <p class="text-xs text-gray-500 mt-1">@notification.CreatedAt.ToLocalTime():g</p>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            <div @ref="ObserverRef"
+                 class="h-12 flex items-center justify-center text-gray-400"
+                 style="@(MyNotifications.Count < TotalCount ? "display:flex;" : "display:none;")">
+                Loading more...
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    List<Notification> MyNotifications = new();
+    Dictionary<string, List<Notification>> GroupedNotifications = new();
+
+    NotificationsPaginatedRequest Request = new() { Page = 1, PageSize = 10 };
+    int TotalCount = 0;
+
+    bool IsLoading = true;
+    bool IsLoadingMore = false;
+    private ElementReference ObserverRef;
+    private bool _init = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadNotifications();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_init & ObserverRef.Context != null)
+        {
+            _init = true;
+            await Task.Delay(2000);
+            await JSRuntime.InvokeVoidAsync("initInfiniteScroll",
+                DotNetObjectReference.Create(this),
+                ObserverRef,
+                "OnSessionObserverIntersect");
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnSessionObserverIntersect()
+    {
+        if (!IsLoadingMore && MyNotifications.Count < TotalCount)
+        {
+            Request.Page += 1;
+            await LoadNotifications();
+        }
+    }
+
+    private async Task LoadNotifications()
+    {
+        IsLoadingMore = true;
+
+        var result = await NotificationService.GetAllAsync(Request);
+
+        if (result.StatusCode is >= 200 and < 300)
+        {
+            var newItems = result.Items;
+
+            MyNotifications.AddRange(newItems);
+            TotalCount = result.TotalCount;
+
+            foreach (var item in newItems)
+            {
+                var daysAgo = (DateTime.UtcNow - item.CreatedAt).Days;
+                var groupKey = daysAgo switch
+                {
+                    0 => "Today",
+                    <= 7 => "This Week",
+                    _ => "Earlier"
+                };
+
+                if (!GroupedNotifications.ContainsKey(groupKey))
+                    GroupedNotifications[groupKey] = new();
+
+                GroupedNotifications[groupKey].Add(item);
+                GroupedNotifications[groupKey] = GroupedNotifications[groupKey]
+                    .OrderByDescending(n => n.CreatedAt)
+                    .ToList();
+            }
+        }
+
+        IsLoading = false;
+        IsLoadingMore = false;
+    }
+}
