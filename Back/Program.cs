@@ -1,9 +1,9 @@
-using Microsoft.EntityFrameworkCore;
-using Microsoft.OpenApi.Models;
-using Models;
 using Back.Services;
 using Back.Services.AppwriteIO;
 using Back.Services.Jobs;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi.Models;
+using Models;
 
 namespace Back
 {
@@ -84,6 +84,8 @@ namespace Back
             app.MapOpenApi();
             app.UseSwagger();
             app.UseSwaggerUI();
+
+            app.UseMiddleware<JwtRevocationMiddleware>();
 
             app.UseHttpsRedirection();
 

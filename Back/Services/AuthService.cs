@@ -43,8 +43,9 @@ namespace Back.Services
                     Message = "Email not confirmed."
                 };
             }
+            string jti = Guid.NewGuid().ToString();
 
-            string token = GenerateJwtToken(user);
+            string token = GenerateJwtToken(user, jti);
             StringValues userAgent = httpContext.Request.Headers.UserAgent;
             string userAgentValue = userAgent.ToString() ?? "unknown";
             string deviceId = httpContext.Request.Headers["X-Device-ID"].ToString() ?? "unknown";
@@ -73,7 +74,7 @@ namespace Back.Services
                     LastAccessedAt = DateTime.UtcNow,
                     CreatedAt = DateTime.UtcNow,
                     DeviceId = deviceId,
-                    IsActive = true
+                    Jti = jti,
                 };
 
                 await context.UserSessions.AddAsync(newSession);
@@ -160,7 +161,6 @@ namespace Back.Services
 
             string deviceId = devicePassedId ?? httpContext.Request.Headers["X-Device-ID"].ToString() ?? "unknown";
 
-
             int userId = int.Parse(principal.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
 
             var sessionsToRemove = context.UserSessions.Where(s => s.UserId == userId && deviceId == s.DeviceId).ToList();
@@ -216,12 +216,13 @@ namespace Back.Services
             };
         }
 
-        private static string GenerateJwtToken(User user)
+        private static string GenerateJwtToken(User user, string jti)
         {
             byte[] key = new System.Text.UTF8Encoding().GetBytes("baldman_eroe_notturno_gey_che_combatte_contro_gli_etero");
             Claim[] claims =
             [
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim(JwtRegisteredClaimNames.Jti, jti),
                 new Claim(ClaimTypes.Name, user.Name),
                 new Claim(ClaimTypes.Surname, user.Surname),
                 new Claim(ClaimTypes.Email, user.Email),

@@ -9,6 +9,9 @@ namespace Models
         public int Id { get; set; }
 
         [Required]
+        public string Jti { get; set; } = string.Empty;
+
+        [Required]
         public int UserId { get; set; }
 
         [Required]
@@ -26,9 +29,6 @@ namespace Models
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public DateTime? LastAccessedAt { get; set; }
-
-        [Required]
-        public bool IsActive { get; set; } = true;
 
         [ForeignKey(nameof(UserId))]
         public virtual User User { get; set; } = default!;
