@@ -1,20 +1,71 @@
 ﻿@page "/home"
 @attribute [Authorize]
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
 
-<div class="min-h-screen bg-gray-900 text-gray-200 px-4 py-8 mx-auto max-w-7xl">
-    <h1 class="text-3xl font-bold mb-6 text-indigo-400">Threads Feed</h1>
+<div class="min-h-screen bg-gray-900 text-gray-200 px-4 py-8 mx-auto max-w-4xl">
+    <div class="flex justify-between items-center mb-8">
+        <h1 class="text-3xl font-bold text-indigo-400">Threads Feed</h1>
+        <button class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg shadow transition"
+                @onclick="() => ShowCreatePostModal = true">
+            + Create Post
+        </button>
+    </div>
 
     @foreach (var post in Posts)
     {
-        <PostCard Post="post"
-                  IsCommentsVisible="CommentsVisibleForPost == post.Id"
-                  Comments="GetCommentsForPost(post.Id)"
-                  ToggleComments="ToggleComments"
-                  LikePost="LikePost"
-                  SharePost="SharePost" />
+        <div>
+            <PostCard Post="post"
+                      IsCommentsVisible="CommentsVisibleForPost == post.Id"
+                      Comments="GetCommentsForPost(post.Id)"
+                      ToggleComments="ToggleComments"
+                      LikePost="LikePost"
+                      SharePost="SharePost" />
+        </div>
     }
 </div>
+
+@if (ShowCreatePostModal)
+{
+    <div class="fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-50 transition-all animate-fade-in">
+        <div class="bg-gray-900 rounded-2xl p-6 w-full max-w-lg shadow-2xl border border-gray-700">
+            <h2 class="text-2xl font-semibold text-indigo-400 mb-5">Create a New Post</h2>
+
+            <textarea class="w-full resize-none mb-4 px-4 py-3 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      placeholder="What's on your mind?"
+                      rows="5"
+                      @bind="NewPostContent" />
+
+            <div class="mb-4">
+                <label for="fileInput" class="block mb-2 text-sm font-medium text-gray-300">Upload Image (optional)</label>
+                <InputFile id="fileInput"
+                           OnChange="OnInputFileChange"
+                           class="block w-full text-sm text-gray-300 bg-gray-800 border border-gray-600 rounded-lg cursor-pointer focus:outline-none file:bg-indigo-600 file:text-white file:border-0 file:px-4 file:py-2 file:rounded-md hover:file:bg-indigo-500" />
+            </div>
+
+            @if (!string.IsNullOrEmpty(UploadedImagePreview))
+            {
+                <div class="mb-4">
+                    <img src="@UploadedImagePreview"
+                         alt="Image preview"
+                         class="max-h-52 rounded-md object-contain border border-gray-700 mx-auto" />
+                </div>
+            }
+
+            <div class="flex justify-end gap-3 mt-4">
+                <button class="px-4 py-2 bg-gray-700 text-white text-sm rounded-md hover:bg-gray-600 transition"
+                        @onclick="CloseModal">Cancel</button>
+
+                <button class="px-5 py-2 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-500 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                        @onclick="CreateNewPost"
+                        disabled="@IsPostButtonDisabled">
+                    Post
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
 
 @code {
     private List<Post> Posts = new()
@@ -49,83 +100,23 @@
             Replies = 2,
             Likes = 8
         }
-    }; 
-
-    private Dictionary<int, List<Comment>> PostComments = new()
-    {
-        {
-            1, new List<Comment>()
-            {
-                new Comment
-                {
-                    Author = "David Green",
-                    AvatarUrl = "https://randomuser.me/api/portraits/men/32.jpg",
-                    Content = "Great job Alice! Blazor is really powerful.",
-                    Timestamp = DateTime.UtcNow.AddMinutes(-8)
-                },
-                new Comment
-                {
-                    Author = "Emma White",
-                    AvatarUrl = "https://randomuser.me/api/portraits/women/45.jpg",
-                    Content = "Can't wait to try your project!",
-                    Timestamp = DateTime.UtcNow.AddMinutes(-6)
-                },
-                new Comment
-                {
-                    Author = "Frank Miller",
-                    AvatarUrl = "https://randomuser.me/api/portraits/men/43.jpg",
-                    Content = "Awesome work!",
-                    Timestamp = DateTime.UtcNow.AddMinutes(-4)
-                }
-            }
-        },
-        {
-            2, new List<Comment>()
-            {
-                new Comment
-                {
-                    Author = "Grace Lee",
-                    AvatarUrl = "https://randomuser.me/api/portraits/women/17.jpg",
-                    Content = "Try using virtualization for large data sets.",
-                    Timestamp = DateTime.UtcNow.AddMinutes(-55)
-                },
-                new Comment
-                {
-                    Author = "Harry Brown",
-                    AvatarUrl = "https://randomuser.me/api/portraits/men/26.jpg",
-                    Content = "Also cache frequently used data to reduce calls.",
-                    Timestamp = DateTime.UtcNow.AddMinutes(-50)
-                }
-            }
-        },
-        {
-            3, new List<Comment>()
-            {
-                new Comment
-                {
-                    Author = "Ivy Green",
-                    AvatarUrl = "https://randomuser.me/api/portraits/women/12.jpg",
-                    Content = "Tailwind CSS plugin is a lifesaver, right?",
-                    Timestamp = DateTime.UtcNow.AddHours(-20)
-                },
-                new Comment
-                {
-                    Author = "Jack Black",
-                    AvatarUrl = "https://randomuser.me/api/portraits/men/28.jpg",
-                    Content = "Totally agree with you Carmen!",
-                    Timestamp = DateTime.UtcNow.AddHours(-18)
-                }
-            }
-        }
     };
+
+    private Dictionary<int, List<Comment>> PostComments = new();
     private int? CommentsVisibleForPost = null;
+
+    private bool ShowCreatePostModal = false;
+
+    private string NewPostContent = string.Empty;
+
+    private IBrowserFile? UploadedImageFile;
+    private string? UploadedImagePreview;
+
+    private bool IsPostButtonDisabled => string.IsNullOrWhiteSpace(NewPostContent);
 
     private void ToggleComments(int postId)
     {
-        if (CommentsVisibleForPost == postId)
-            CommentsVisibleForPost = null;
-        else
-            CommentsVisibleForPost = postId;
+        CommentsVisibleForPost = CommentsVisibleForPost == postId ? null : postId;
     }
 
     private void LikePost(int postId)
@@ -144,10 +135,61 @@
 
     private List<Comment> GetCommentsForPost(int postId)
     {
-        if (PostComments.TryGetValue(postId, out var comments))
+        return PostComments.TryGetValue(postId, out var comments)
+            ? comments
+            : new List<Comment>();
+    }
+
+    private async Task OnInputFileChange(InputFileChangeEventArgs e)
+    {
+        UploadedImageFile = e.File;
+
+        // Load image as base64 for preview
+        var buffer = new byte[UploadedImageFile.Size];
+        await UploadedImageFile.OpenReadStream(1024 * 1024 * 5).ReadAsync(buffer);
+
+        var base64 = Convert.ToBase64String(buffer);
+        var format = UploadedImageFile.ContentType; // e.g. "image/png"
+
+        UploadedImagePreview = $"data:{format};base64,{base64}";
+        StateHasChanged();
+    }
+
+    private void CloseModal()
+    {
+        ShowCreatePostModal = false;
+        NewPostContent = string.Empty;
+        UploadedImageFile = null;
+        UploadedImagePreview = null;
+    }
+
+    private void CreateNewPost()
+    {
+        if (!string.IsNullOrWhiteSpace(NewPostContent))
         {
-            return comments;
+            var newId = Posts.Any() ? Posts.Max(p => p.Id) + 1 : 1;
+
+            // For demo, we put the image preview as part of content, or you can enhance your Post model to have ImageUrl
+            var newPost = new Post
+            {
+                Id = newId,
+                Author = "You", // ideally fetched from JWT/context in real app
+                AvatarUrl = "https://randomuser.me/api/portraits/lego/1.jpg", // default avatar
+                Timestamp = DateTime.UtcNow,
+                Content = NewPostContent,
+                Replies = 0,
+                Likes = 0
+            };
+
+            if (!string.IsNullOrEmpty(UploadedImagePreview))
+            {
+                // You can customize Post model to include ImageUrl or Images list.
+                newPost.Content += $"\n\n![uploaded image]({UploadedImagePreview})";
+            }
+
+            Posts.Insert(0, newPost);
+
+            CloseModal();
         }
-        return new List<Comment>();
     }
 }

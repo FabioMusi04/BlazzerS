@@ -34,8 +34,6 @@ public class JwtRevocationMiddleware(RequestDelegate next)
                 var jwtToken = handler.ReadJwtToken(token);
                 var jti = jwtToken?.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Jti)?.Value;
 
-                Console.WriteLine($"JWT JTI: {jti}");
-
                 if (!string.IsNullOrEmpty(jti))
                 {
                     var session = await db.UserSessions

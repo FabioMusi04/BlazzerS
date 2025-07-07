@@ -61,6 +61,7 @@ namespace Back.Services
                 existingSession.LastAccessedAt = DateTime.UtcNow;
                 existingSession.IPAddress = ip;
                 existingSession.UserAgent = userAgentValue;
+                existingSession.Jti = jti;
 
                 context.UserSessions.Update(existingSession);
             }

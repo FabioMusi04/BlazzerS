@@ -2,6 +2,7 @@ using Back.Services;
 using Back.Services.AppwriteIO;
 using Back.Services.Jobs;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.OpenApi.Models;
 using Models;
 
@@ -58,7 +59,9 @@ namespace Back
             });
 
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+                options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
+                .ReplaceService<IHistoryRepository, NonLockingNpgsqlHistoryRepository>()
+                );
 
             builder.Services.AddOpenApi();
 

@@ -7,7 +7,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Back.Migrations
 {
     /// <inheritdoc />
-    public partial class initial : Migration
+    public partial class EFPostgressSql : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -44,11 +44,17 @@ namespace Back.Migrations
                     EmailConfirmed = table.Column<bool>(type: "boolean", nullable: false),
                     Role = table.Column<int>(type: "integer", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    ProfileImageId = table.Column<int>(type: "integer", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Users", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Users_UploadFiles_ProfileImageId",
+                        column: x => x.ProfileImageId,
+                        principalTable: "UploadFiles",
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -149,6 +155,31 @@ namespace Back.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
+            migrationBuilder.CreateTable(
+                name: "UserSessions",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Jti = table.Column<string>(type: "text", nullable: false),
+                    UserId = table.Column<int>(type: "integer", nullable: false),
+                    UserAgent = table.Column<string>(type: "character varying(512)", maxLength: 512, nullable: false),
+                    IPAddress = table.Column<string>(type: "character varying(45)", maxLength: 45, nullable: false),
+                    DeviceId = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    LastAccessedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserSessions", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_UserSessions_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
             migrationBuilder.CreateIndex(
                 name: "IX_EmailVerificationTokens_UserId",
                 table: "EmailVerificationTokens",
@@ -168,6 +199,16 @@ namespace Back.Migrations
                 name: "IX_PushSubscriptions_UserId",
                 table: "PushSubscriptions",
                 column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Users_ProfileImageId",
+                table: "Users",
+                column: "ProfileImageId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserSessions_UserId",
+                table: "UserSessions",
+                column: "UserId");
         }
 
         /// <inheritdoc />
@@ -186,10 +227,13 @@ namespace Back.Migrations
                 name: "PushSubscriptions");
 
             migrationBuilder.DropTable(
-                name: "UploadFiles");
+                name: "UserSessions");
 
             migrationBuilder.DropTable(
                 name: "Users");
+
+            migrationBuilder.DropTable(
+                name: "UploadFiles");
         }
     }
 }
