@@ -1,10 +1,20 @@
-﻿namespace Models
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace Models
 {
     public class Comment
     {
-        public string Author { get; set; } = "";
-        public string AvatarUrl { get; set; } = "";
+        [Required]
+        public int UserId { get; set; }
+
+        [Required]
+        [MaxLength(256)]
         public string Content { get; set; } = "";
-        public DateTime Timestamp { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime? UpdatedAt { get; set; } = null;
+
+        [ForeignKey(nameof(UserId))]
+        public virtual User User { get; set; } = default!;
     }
 }

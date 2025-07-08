@@ -1,0 +1,19 @@
+@inject NavigationManager Navigation
+
+<div class="flex flex-col items-center justify-center h-screen text-center text-gray-700">
+    <div class="text-lg mb-2">@Message</div>
+    <div class="animate-spin h-6 w-6 border-t-2 border-blue-600 rounded-full"></div>
+</div>
+
+@code {
+    [Parameter] public string Url { get; set; } = "/";
+    [Parameter] public string Message { get; set; } = "Redirecting...";
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            Navigation.NavigateTo(Url, true);
+        }
+    }
+}

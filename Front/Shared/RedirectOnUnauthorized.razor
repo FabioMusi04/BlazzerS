@@ -1,0 +1,27 @@
+@using Microsoft.AspNetCore.Components.Authorization
+@inject NavigationManager Navigation
+
+<CascadingAuthenticationState>
+    <CascadingValue Value="this">
+        @if (!authState?.User?.Identity?.IsAuthenticated ?? true)
+        {
+            <RedirectTo Url="/login" Message="Redirecting to login..." />
+        }
+        else
+        {
+            <RedirectTo Url="/unauthorized" Message="You’re not allowed here." />
+        }
+    </CascadingValue>
+</CascadingAuthenticationState>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthStateTask { get; set; }
+
+    private AuthenticationState? authState;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthStateTask != null)
+            authState = await AuthStateTask;
+    }
+}

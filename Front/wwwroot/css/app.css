@@ -54,6 +54,7 @@ a,
     padding: 0.6rem 1.25rem 0.7rem 1.25rem;
     position: fixed;
     width: 100%;
+    color: black;
     z-index: 1000;
 }
 

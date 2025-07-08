@@ -229,8 +229,57 @@
             IsLoadingPosts = true;
             Posts = new List<Post>
             {
-                new Post { Content = "Welcome to Threads!" },
-                new Post { Content = "This is your second post." }
+                new Post
+{
+Id = 1,
+UserId = 1,
+Content = "Hey everyone! Just finished a cool Blazor project. Loving this framework!",
+Likes = 12,
+CreatedAt = DateTime.UtcNow.AddMinutes(-10),
+User = new User
+{
+Id = 1,
+Name = "Alice Johnson",
+ProfileImage = new UploadFile
+{
+FilePath = "https://randomuser.me/api/portraits/women/68.jpg"
+}
+}
+},
+new Post
+{
+Id = 2,
+UserId = 2,
+Content = "Does anyone have tips for optimizing Blazor server-side performance?",
+Likes = 20,
+CreatedAt = DateTime.UtcNow.AddHours(-1),
+User = new User
+{
+Id = 2,
+Name = "Bob Smith",
+ProfileImage = new UploadFile
+{
+FilePath = "https://randomuser.me/api/portraits/men/15.jpg"
+}
+}
+},
+new Post
+{
+Id = 3,
+UserId = 3,
+Content = "Just tried the new Tailwind CSS plugin. Styling is so much easier now!",
+Likes = 8,
+CreatedAt = DateTime.UtcNow.AddDays(-1),
+User = new User
+{
+Id = 3,
+Name = "Carmen Lee",
+ProfileImage = new UploadFile
+{
+FilePath = "https://randomuser.me/api/portraits/women/22.jpg"
+}
+}
+}
             };
         }
         finally

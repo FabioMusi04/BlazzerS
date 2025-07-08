@@ -1,0 +1,260 @@
+@page "/post/{PostId:int}"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject NavigationManager Navigation
+@inject IJSRuntime js
+
+<div class="min-h-screen bg-gray-900 text-gray-200 px-4 py-8 mx-auto max-w-3xl">
+    @if (SelectedPost != null)
+    {
+        <div class="bg-gray-800 p-6 rounded-xl shadow-md border border-gray-700">
+            <div class="flex items-center mb-4 space-x-4">
+                <img class="w-12 h-12 rounded-full border border-gray-600" src="@SelectedPost.User.ProfileImage.FilePath" alt="@SelectedPost.User.Email" />
+                <div>
+                    <h2 class="text-lg font-semibold text-indigo-400">@SelectedPost.User.Email</h2>
+                    <p class="text-sm text-gray-400">@SelectedPost.CreatedAt.ToLocalTime().ToString("f")</p>
+                </div>
+            </div>
+
+            <p class="text-lg mb-4">@SelectedPost.Content</p>
+
+            @if (!string.IsNullOrEmpty(SelectedPost.Image?.FilePath))
+            {
+                <img src="@SelectedPost.Image?.FilePath" alt="Post image" class="rounded-lg border border-gray-700 mb-4 max-h-96 object-contain" />
+            }
+
+            <div class="flex items-center text-sm text-gray-400 space-x-4">
+                <span>👍 @SelectedPost.Likes Likes</span>
+                <span>💬 @TotalComments Comments</span>
+            </div>
+        </div>
+
+        <div class="mt-8 relative" style="height: 500px;">
+            <h3 class="text-xl font-bold mb-4 text-indigo-400">Comments</h3>
+
+            <div @ref="CommentsContainerRef"
+                 class="overflow-y-auto pr-2"
+                 style="max-height: 370px;"
+                 @onscroll="OnCommentsScroll">
+                @if (Comments != null && Comments.Any())
+                {
+                    @foreach (var comment in Comments)
+                    {
+                        <div class="mb-4 p-4 bg-gray-800 rounded-lg border border-gray-700 flex space-x-3">
+                            <img src="@comment.User.ProfileImage.FilePath" class="w-10 h-10 rounded-full border border-gray-600" />
+                            <div>
+                                <p class="text-sm font-semibold text-indigo-300">@comment.User.Email</p>
+                                <p class="text-sm text-gray-400">@comment.User.CreatedAt.ToLocalTime().ToString("g")</p>
+                                <p class="mt-1 text-gray-200">@comment.Content</p>
+                            </div>
+                        </div>
+                    }
+                    @if (IsLoadingComments)
+                    {
+                        <div class="text-center text-gray-400 py-2">Loading more comments...</div>
+                    }
+                }
+                else
+                {
+                    <p class="text-gray-400">No comments yet. Be the first to comment!</p>
+                }
+            </div>
+
+            <div class="absolute left-0 right-0 bottom-0 bg-gray-900 p-4 border-t border-gray-700">
+                <textarea class="w-full px-4 py-3 bg-gray-800 text-white rounded-lg border border-gray-700 resize-none mb-3"
+                          placeholder="Write a comment..."
+                          rows="3"
+                          @bind="NewCommentContent"></textarea>
+                <div class="flex justify-end">
+                    <button class="bg-indigo-600 hover:bg-indigo-500 px-5 py-2 rounded-md text-white text-sm"
+                            @onclick="SubmitComment"
+                            disabled="@string.IsNullOrWhiteSpace(NewCommentContent)">
+                        Submit Comment
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <p class="text-gray-300">Loading post...</p>
+    }
+</div>
+
+@code {
+    [Parameter] public int PostId { get; set; }
+
+    private Post? SelectedPost;
+    private List<Comment> Comments = new();
+    private string NewCommentContent = string.Empty;
+    private int TotalComments = 0;
+
+    private int PageSize = 5;
+    private int CurrentPage = 1;
+    private bool IsLoadingComments = false;
+    private ElementReference CommentsContainerRef;
+
+    protected override void OnInitialized()
+    {
+        var allPosts = GetAllPosts();
+        SelectedPost = allPosts.FirstOrDefault(p => p.Id == PostId);
+
+        TotalComments = GetAllComments(PostId).Count;
+        LoadComments();
+    }
+
+    private void SubmitComment()
+    {
+        if (!string.IsNullOrWhiteSpace(NewCommentContent))
+        {
+            var newComment = new Comment
+            {
+                Content = NewCommentContent,
+                UserId = 1, // Simulated user ID
+                CreatedAt = DateTime.UtcNow,
+                User = new User
+                {
+                    Id = 1,
+                    Email = "user1@example.com",
+                    ProfileImage = new UploadFile
+                    {
+                        Id = 1,
+                        FilePath = "https://randomuser.me/api/portraits/men/18.jpg"
+                    },
+                    CreatedAt = DateTime.UtcNow.AddYears(-1)
+                }
+            };
+            Comments.Insert(0, newComment);
+            TotalComments++;
+            NewCommentContent = string.Empty;
+        }
+    }
+
+    private List<Post> GetAllPosts() => new()
+    {
+        new Post
+        {
+            Id = 1,
+            UserId = 1,
+            Content = "This is a sample post content for testing.",
+            CreatedAt = DateTime.UtcNow.AddMinutes(-45),
+            Likes = 10,
+            Image = new UploadFile
+            {
+                Id = 1,
+                FilePath = "https://picsum.photos/seed/picsum/800/400"
+            },
+            User = new User
+            {
+                Id = 1,
+                Email = "test@test.com",
+                ProfileImage = new UploadFile
+                {
+                    Id = 1,
+                    FilePath = "https://randomuser.me/api/portraits"
+                }
+            }
+        },
+    };
+
+    // Simulate a large list of comments for infinite scroll
+    private List<Comment> GetAllComments(int postId)
+    {
+        var baseComments = new List<Comment>
+        {
+            new Comment
+            {
+                UserId = 1,
+                Content = "I totally agree!",
+                CreatedAt = DateTime.UtcNow.AddMinutes(-30),
+                User = new User
+                {
+                    Id = 1,
+                    Email = "user1@example.com",
+                    ProfileImage = new UploadFile
+                    {
+                        Id = 1,
+                        FilePath = "https://randomuser.me/api/portraits/men/18.jpg"
+                    },
+                    CreatedAt = DateTime.UtcNow.AddYears(-1)
+                }
+            },
+            new Comment
+            {
+                UserId = 2,
+                Content = "Awesome post, thanks for sharing.",
+                CreatedAt = DateTime.UtcNow.AddMinutes(-10),
+                User = new User
+                {
+                    Id = 2,
+                    Email = "user2@example.com",
+                    ProfileImage = new UploadFile
+                    {
+                        Id = 2,
+                        FilePath = "https://randomuser.me/api/portraits/women/20.jpg"
+                    },
+                    CreatedAt = DateTime.UtcNow.AddMonths(-6)
+                }
+            }
+        };
+
+        // Simulate more comments for infinite scroll
+        var comments = new List<Comment>();
+        for (int i = 0; i < 30; i++)
+        {
+            var baseComment = baseComments[i % baseComments.Count];
+            comments.Add(new Comment
+            {
+                UserId = baseComment.UserId,
+                Content = baseComment.Content + $" (copy {i + 1})",
+                CreatedAt = DateTime.UtcNow.AddMinutes(-10 * (i + 1)),
+                User = baseComment.User
+            });
+        }
+        return comments;
+    }
+
+    private void LoadComments()
+    {
+        IsLoadingComments = true;
+        var allComments = GetAllComments(PostId)
+            .OrderByDescending(c => c.CreatedAt)
+            .ToList();
+
+        var nextComments = allComments
+            .Skip((CurrentPage - 1) * PageSize)
+            .Take(PageSize)
+            .ToList();
+
+        if (CurrentPage == 1)
+            Comments = new List<Comment>(nextComments);
+        else
+            Comments.AddRange(nextComments);
+
+        IsLoadingComments = false;
+        StateHasChanged();
+    }
+
+    private async Task OnCommentsScroll()
+    {
+        var scrollInfo = await js.InvokeAsync<ScrollInfo>("getScrollInfo", CommentsContainerRef);
+
+        // If near bottom and not already loading
+        if (!IsLoadingComments && scrollInfo.ScrollHeight - scrollInfo.ScrollTop - scrollInfo.ClientHeight < 50)
+        {
+            var allComments = GetAllComments(PostId);
+            if (Comments.Count < allComments.Count)
+            {
+                CurrentPage++;
+                LoadComments();
+            }
+        }
+    }
+
+    public class ScrollInfo
+    {
+        public double ScrollTop { get; set; }
+        public double ScrollHeight { get; set; }
+        public double ClientHeight { get; set; }
+    }
+}

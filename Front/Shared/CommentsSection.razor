@@ -4,11 +4,11 @@
     @foreach (var comment in Comments)
     {
         <div class="flex items-start mb-3">
-            <img src="@comment.AvatarUrl" alt="@comment.Author" class="w-8 h-8 rounded-full border border-indigo-600" />
+            <img src="@comment.User.ProfileImage.FilePath" alt="@comment.User.Email" class="w-8 h-8 rounded-full border border-indigo-600" />
             <div class="ml-3">
-                <p class="text-indigo-300 font-semibold text-sm">@comment.Author</p>
+                <p class="text-indigo-300 font-semibold text-sm">@comment.User.Email</p>
                 <p class="text-gray-300 text-sm">@comment.Content</p>
-                <p class="text-xs text-gray-500">@comment.Timestamp.ToLocalTime().ToString("MMM d, yyyy h:mm tt")</p>
+                <p class="text-xs text-gray-500">@comment.CreatedAt.ToLocalTime().ToString("MMM d, yyyy h:mm tt")</p>
             </div>
         </div>
     }
