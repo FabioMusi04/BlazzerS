@@ -3,58 +3,92 @@
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Forms
 
-<div class="min-h-screen bg-gray-900 text-gray-200 px-4 py-8 mx-auto max-w-4xl">
-    <div class="flex justify-between items-center mb-8">
-        <h1 class="text-3xl font-bold text-indigo-400">Threads Feed</h1>
-        <button
-            class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg shadow transition"
-            @onclick="() => ShowCreatePostModal = true">
-            + Create Post
-        </button>
-    </div>
+<div class="min-h-screen bg-gray-900 text-gray-200 px-4 py-8 mx-auto max-w-7xl">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-12">
+        <div class="lg:col-span-2">
+            <div class="flex justify-between items-center mb-8">
+                <h1 class="text-3xl font-bold text-indigo-400">Threads Feed</h1>
+                <button class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg shadow transition"
+                        @onclick="() => ShowCreatePostModal = true">
+                    + Create Post
+                </button>
+            </div>
 
-    @foreach (var post in Posts)
-    {
-        <div>
-            <PostCard Post="post" IsCommentsVisible="CommentsVisibleForPost == post.Id"
-                Comments="GetCommentsForPost(post.Id)" ToggleComments="ToggleComments" LikePost="LikePost"
-                SharePost="SharePost" />
+            @foreach (var post in Posts)
+            {
+                <div class="mb-6">
+                    <PostCard Post="post"
+                              IsCommentsVisible="CommentsVisibleForPost == post.Id"
+                              Comments="GetCommentsForPost(post.Id)"
+                              ToggleComments="ToggleComments"
+                              LikePost="LikePost"
+                              SharePost="SharePost" />
+                </div>
+            }
         </div>
-    }
+
+        <div class="bg-gray-800 rounded-lg p-4 border border-gray-700 shadow-md h-fit">
+            <h2 class="text-lg font-semibold text-indigo-400 mb-4">Suggested Users</h2>
+
+            @if (IsLoadingSuggestions)
+            {
+                <p class="text-gray-400 animate-pulse">Loading suggestions...</p>
+            }
+            else if (SuggestedUsers == null || !SuggestedUsers.Any())
+            {
+                <p class="text-gray-500">No suggestions found.</p>
+            }
+            else
+            {
+                @foreach (var user in SuggestedUsers)
+                {
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center space-x-3">
+                            <img src="@user.ProfileImage.FilePath" class="w-10 h-10 rounded-full border border-gray-600" />
+                            <span>@user.Name</span>
+                        </div>
+                        <button class="text-sm bg-indigo-600 hover:bg-indigo-500 px-3 py-1 rounded text-white"
+                                @onclick="() => AddUser(user.Id)">
+                            Add
+                        </button>
+                    </div>
+                }
+            }
+        </div>
+    </div>
 </div>
 
 @if (ShowCreatePostModal)
 {
-    <div
-        class="fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-50 transition-all animate-fade-in">
+    <div class="fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-50 transition-all animate-fade-in">
         <div class="bg-gray-900 rounded-2xl p-6 w-full max-w-lg shadow-2xl border border-gray-700">
             <h2 class="text-2xl font-semibold text-indigo-400 mb-5">Create a New Post</h2>
 
-            <textarea
-                class="w-full resize-none mb-4 px-4 py-3 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="What's on your mind?" rows="5" @bind="NewPostContent" />
+            <textarea class="w-full resize-none mb-4 px-4 py-3 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      placeholder="What's on your mind?" rows="5" @bind="NewPostContent" />
 
             <div class="mb-4">
                 <label for="fileInput" class="block mb-2 text-sm font-medium text-gray-300">Upload Image (optional)</label>
                 <InputFile id="fileInput" OnChange="OnInputFileChange"
-                    class="block w-full text-sm text-gray-300 bg-gray-800 border border-gray-600 rounded-lg cursor-pointer focus:outline-none file:bg-indigo-600 file:text-white file:border-0 file:px-4 file:py-2 file:rounded-md hover:file:bg-indigo-500" />
+                           class="block w-full text-sm text-gray-300 bg-gray-800 border border-gray-600 rounded-lg cursor-pointer focus:outline-none file:bg-indigo-600 file:text-white file:border-0 file:px-4 file:py-2 file:rounded-md hover:file:bg-indigo-500" />
             </div>
 
             @if (!string.IsNullOrEmpty(UploadedImagePreview))
             {
                 <div class="mb-4">
                     <img src="@UploadedImagePreview" alt="Image preview"
-                        class="max-h-52 rounded-md object-contain border border-gray-700 mx-auto" />
+                         class="max-h-52 rounded-md object-contain border border-gray-700 mx-auto" />
                 </div>
             }
 
             <div class="flex justify-end gap-3 mt-4">
                 <button class="px-4 py-2 bg-gray-700 text-white text-sm rounded-md hover:bg-gray-600 transition"
-                    @onclick="CloseModal">Cancel</button>
+                        @onclick="CloseModal">
+                    Cancel
+                </button>
 
-                <button
-                    class="px-5 py-2 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-500 transition disabled:opacity-40 disabled:cursor-not-allowed"
-                    @onclick="CreateNewPost" disabled="@IsPostButtonDisabled">
+                <button class="px-5 py-2 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-500 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                        @onclick="CreateNewPost" disabled="@IsPostButtonDisabled">
                     Post
                 </button>
             </div>
@@ -62,62 +96,115 @@
     </div>
 }
 
-
 @code {
     private List<Post> Posts = new()
-{
-new Post
-{
-Id = 1,
-UserId = 1,
-Content = "Hey everyone! Just finished a cool Blazor project. Loving this framework!",
-Likes = 12,
-CreatedAt = DateTime.UtcNow.AddMinutes(-10),
-User = new User
-{
-Id = 1,
-Name = "Alice Johnson",
-ProfileImage = new UploadFile
-{
-FilePath = "https://randomuser.me/api/portraits/women/68.jpg"
-}
-}
-},
-new Post
-{
-Id = 2,
-UserId = 2,
-Content = "Does anyone have tips for optimizing Blazor server-side performance?",
-Likes = 20,
-CreatedAt = DateTime.UtcNow.AddHours(-1),
-User = new User
-{
-Id = 2,
-Name = "Bob Smith",
-ProfileImage = new UploadFile
-{
-FilePath = "https://randomuser.me/api/portraits/men/15.jpg"
-}
-}
-},
-new Post
-{
-Id = 3,
-UserId = 3,
-Content = "Just tried the new Tailwind CSS plugin. Styling is so much easier now!",
-Likes = 8,
-CreatedAt = DateTime.UtcNow.AddDays(-1),
-User = new User
-{
-Id = 3,
-Name = "Carmen Lee",
-ProfileImage = new UploadFile
-{
-FilePath = "https://randomuser.me/api/portraits/women/22.jpg"
-}
-}
-}
-};
+    {
+        new Post
+        {
+            Id = 1,
+            UserId = 1,
+            Content = "Hey everyone! Just finished a cool Blazor project. Loving this framework!",
+            Likes = 12,
+            CreatedAt = DateTime.UtcNow.AddMinutes(-10),
+            User = new User
+            {
+                Id = 1,
+                Name = "Alice Johnson",
+                ProfileImage = new UploadFile
+                {
+                    FilePath = "https://randomuser.me/api/portraits/women/68.jpg"
+                }
+            }
+        },
+        new Post
+        {
+            Id = 2,
+            UserId = 2,
+            Content = "Does anyone have tips for optimizing Blazor server-side performance?",
+            Likes = 20,
+            CreatedAt = DateTime.UtcNow.AddHours(-1),
+            User = new User
+            {
+                Id = 2,
+                Name = "Bob Smith",
+                ProfileImage = new UploadFile
+                {
+                    FilePath = "https://randomuser.me/api/portraits/men/15.jpg"
+                }
+            }
+        },
+        new Post
+        {
+            Id = 3,
+            UserId = 3,
+            Content = "Just tried the new Tailwind CSS plugin. Styling is so much easier now!",
+            Likes = 8,
+            CreatedAt = DateTime.UtcNow.AddDays(-1),
+            User = new User
+            {
+                Id = 3,
+                Name = "Carmen Lee",
+                ProfileImage = new UploadFile
+                {
+                    FilePath = "https://randomuser.me/api/portraits/women/22.jpg"
+                }
+            }
+        }
+    };
+
+    private bool IsLoadingSuggestions = true;
+    private List<User> SuggestedUsers = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSuggestedUsersAsync();
+    }
+
+    private async Task LoadSuggestedUsersAsync()
+    {
+        IsLoadingSuggestions = true;
+
+        await Task.Delay(1500);
+
+        SuggestedUsers = new List<User>
+        {
+            new User
+            {
+                Id = 1,
+                Name = "Diana White",
+                ProfileImage = new UploadFile
+                {
+                    FilePath = "https://randomuser.me/api/portraits/lego/1.jpg" // Example default avatar
+                }
+            },
+            new User
+            {
+                Id = 2,
+                Name = "Eric Blue",
+                ProfileImage = new UploadFile
+                {
+                    FilePath = "https://randomuser.me/api/portraits/lego/1.jpg" // Example default avatar
+                }
+            },
+            new User
+            {
+                Id = 3,
+                Name = "Luna Rivera",
+                ProfileImage = new UploadFile
+                {
+                    FilePath = "https://randomuser.me/api/portraits/lego/1.jpg" // Example default avatar
+                }
+            }
+        };
+
+        IsLoadingSuggestions = false;
+    }
+
+    private void AddUser(int userId)
+    {
+        // Do something like send a friend request or follow
+        Console.WriteLine($"User {userId} added.");
+    }
 
     private Dictionary<int, List<Comment>> PostComments = new();
     private int? CommentsVisibleForPost = null;
@@ -153,8 +240,8 @@ FilePath = "https://randomuser.me/api/portraits/women/22.jpg"
     private List<Comment> GetCommentsForPost(int postId)
     {
         return PostComments.TryGetValue(postId, out var comments)
-        ? comments
-        : new List<Comment>();
+            ? comments
+            : new List<Comment>();
     }
 
     private async Task OnInputFileChange(InputFileChangeEventArgs e)
@@ -198,9 +285,10 @@ FilePath = "https://randomuser.me/api/portraits/women/22.jpg"
                 {
                     Id = 1,
                     Name = "You",
-                    ProfileImage = {
-FilePath = "https://randomuser.me/api/portraits"
-}
+                    ProfileImage = new UploadFile
+                    {
+                        FilePath = "https://randomuser.me/api/portraits/men/1.jpg"
+                    }
                 }
             };
 
