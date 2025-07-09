@@ -5,6 +5,9 @@ namespace Models
 {
     public class Comment
     {
+        [Key]
+        public int Id { get; set; }
+
         [Required]
         public int UserId { get; set; }
 

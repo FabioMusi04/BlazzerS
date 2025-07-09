@@ -30,6 +30,11 @@ namespace Models.http
         public User User { get; set; } = default!;
     }
 
+    public class PostResponse : Response
+    {
+        public Post Post { get; set; } = default!;
+    }
+
     public class UploadFileResponse : Response
     {
         public UploadFile File { get; set; } = default!;
@@ -67,6 +72,10 @@ namespace Models.http
     }
 
     public class UserSessionsPaginatedResponse : PagedResponse<UserSession>
+    {
+    }
+
+    public class PostsPaginatedResponse : PagedResponse<Post>
     {
     }
 }

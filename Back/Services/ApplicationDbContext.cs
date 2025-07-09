@@ -12,6 +12,8 @@ namespace Back.Services
         public DbSet<ResetPasswordToken> PasswordResetTokens { get; set; }
         public DbSet<PushSubscription> PushSubscriptions { get; set; }
         public DbSet<UploadFile> UploadFiles { get; set; }
+        public DbSet<Post> Posts { get; set; }
+        public DbSet<Comment> Comments { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

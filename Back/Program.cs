@@ -72,6 +72,7 @@ namespace Back
             builder.Services.AddSingleton<IAppwriteClient, AppwriteClient>();
             builder.Services.AddSingleton<IUserService, UserService>();
             builder.Services.AddSingleton<IUploadFileService, UploadFileService>();
+            builder.Services.AddScoped<IPostService, PostService>();
             builder.Services.AddScoped<IEmailService, EmailService>();
             builder.Services.AddScoped<INotificationService, NotificationService>();
             builder.Services.AddScoped<ITokenVerificationService, TokenVerificationService>();

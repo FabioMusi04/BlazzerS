@@ -132,4 +132,9 @@ namespace Models.http
     {
         public int? UserId { get; set; } = default!;
     }
+
+    public class PostPaginatedRequest : PagedRequest
+    {
+        public int? UserId { get; set; } = default!;
+    }
 }
