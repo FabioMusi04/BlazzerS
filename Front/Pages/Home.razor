@@ -3,7 +3,11 @@
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Forms
 
+@inject PostService PostService
+@inject IJSRuntime JSRuntime
+
 <div class="min-h-screen bg-gray-900 text-gray-200 px-4 py-8 mx-auto max-w-7xl">
+    <Alert AlertData="@AlertData" OnDismissed="@(() => AlertData.IsVisible = false)" />
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-12">
         <div class="lg:col-span-2">
             <div class="flex justify-between items-center mb-8">
@@ -14,17 +18,33 @@
                 </button>
             </div>
 
-            @foreach (var post in Posts)
+            @if (IsLoadingPosts)
             {
-                <div class="mb-6">
-                    <PostCard Post="post"
-                              IsCommentsVisible="CommentsVisibleForPost == post.Id"
-                              Comments="GetCommentsForPost(post.Id)"
-                              ToggleComments="ToggleComments"
-                              LikePost="LikePost"
-                              SharePost="SharePost" />
+                <p class="text-gray-400 animate-pulse">Loading posts...</p>
+            }
+            else if (Posts == null || !Posts.Any())
+            {
+                <p class="text-gray-500">No posts to show.</p>
+            }
+            else
+            {
+                <div class="post-scroll-container space-y-4 overflow-y-auto max-h-[85vh] pr-1">
+                    @foreach (var post in Posts)
+                    {
+                        <div class="mb-6">
+                            <PostCard Post="post"
+                                      IsCommentsVisible="CommentsVisibleForPost == post.Id"
+                                      Comments="GetCommentsForPost(post.Id)"
+                                      ToggleComments="ToggleComments"
+                                      LikePost="LikePost"
+                                      SharePost="SharePost" />
+                        </div>
+                    }
+
+                    <div @ref="PostObserverRef" class="h-16" style="@(Posts.Count < TotalCount ? "" : "display:none")"></div>
                 </div>
             }
+
         </div>
 
         <div class="bg-gray-800 rounded-lg p-4 border border-gray-700 shadow-md h-fit">
@@ -97,67 +117,108 @@
 }
 
 @code {
-    private List<Post> Posts = new()
+    private List<Post> Posts = new();
+    private int TotalCount = 0;
+    private bool IsLoadingPosts = true;
+    private bool IsLoadingMorePosts = false;
+    private PostPaginatedRequest PostPaginatedRequest = new()
     {
-        new Post
-        {
-            Id = 1,
-            UserId = 1,
-            Content = "Hey everyone! Just finished a cool Blazor project. Loving this framework!",
-            Likes = 12,
-            CreatedAt = DateTime.UtcNow.AddMinutes(-10),
-            User = new User
-            {
-                Id = 1,
-                Name = "Alice Johnson",
-                ProfileImage = new UploadFile
-                {
-                    FilePath = "https://randomuser.me/api/portraits/women/68.jpg"
-                }
-            }
-        },
-        new Post
-        {
-            Id = 2,
-            UserId = 2,
-            Content = "Does anyone have tips for optimizing Blazor server-side performance?",
-            Likes = 20,
-            CreatedAt = DateTime.UtcNow.AddHours(-1),
-            User = new User
-            {
-                Id = 2,
-                Name = "Bob Smith",
-                ProfileImage = new UploadFile
-                {
-                    FilePath = "https://randomuser.me/api/portraits/men/15.jpg"
-                }
-            }
-        },
-        new Post
-        {
-            Id = 3,
-            UserId = 3,
-            Content = "Just tried the new Tailwind CSS plugin. Styling is so much easier now!",
-            Likes = 8,
-            CreatedAt = DateTime.UtcNow.AddDays(-1),
-            User = new User
-            {
-                Id = 3,
-                Name = "Carmen Lee",
-                ProfileImage = new UploadFile
-                {
-                    FilePath = "https://randomuser.me/api/portraits/women/22.jpg"
-                }
-            }
-        }
+        Page = 1,
+        PageSize = 10
     };
 
     private bool IsLoadingSuggestions = true;
     private List<User> SuggestedUsers = new();
 
+    private bool IsSaving = false;
+
+    private AlertModel AlertData = new();
+
+    private ElementReference PostObserverRef;
+    private bool _initialized = false;
+
+    [JSInvokable]
+    public async Task OnScrollReachedBottom()
+    {
+        if (!IsLoadingPosts && Posts.Count < TotalCount)
+        {
+            PostPaginatedRequest.Page++;
+            await LoadPostsAsync();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_initialized)
+        {
+            await Task.Delay(2000);
+            if (PostObserverRef.Context != null)
+            {
+                Console.WriteLine("Setup infinitescroll...");
+                _initialized = true;
+
+                await JSRuntime.InvokeVoidAsync("initInfiniteScroll",
+                    DotNetObjectReference.Create(this),
+                    PostObserverRef,
+                    "OnPostObserverIntersect",
+                    ".post-scroll-container"
+                );
+            }
+        }
+    }
+
     protected override async Task OnInitializedAsync()
     {
         await LoadSuggestedUsersAsync();
+        await LoadPostsAsync();
+    }
+
+    private async Task LoadPostsAsync()
+    {
+        IsLoadingPosts = true;
+
+        try
+        {
+            var result = await PostService.GetAllAsync(PostPaginatedRequest);
+            Posts = result.Items ?? new List<Post>();
+            TotalCount = result.TotalCount;
+
+        } catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading posts: {ex.Message}");
+            AlertData = new AlertModel
+            {
+                IsVisible = true,
+                Style = AlertTypeEnum.Danger,
+                Title = "Error",
+                Message = "Failed to load posts.",
+                Position = AlertStylePositionEnum.BottomRight
+            };
+        }
+        finally
+        {
+            IsLoadingPosts = false;
+        };
+    }
+
+    [JSInvokable]
+    public async Task OnPostObserverIntersect() => await LoadMorePosts();
+
+    private async Task LoadMorePosts()
+    {
+        if (IsLoadingMorePosts || Posts.Count >= TotalCount) return;
+        IsLoadingMorePosts = true;
+
+        PostPaginatedRequest.Page += 1;
+        var response = await PostService.GetMyAsync(PostPaginatedRequest);
+
+        if (response.StatusCode is >= 200 and < 300)
+        {
+            Posts.AddRange(response.Items);
+            StateHasChanged();
+        }
+
+        IsLoadingMorePosts = false;
     }
 
     private async Task LoadSuggestedUsersAsync()
@@ -267,43 +328,81 @@
         UploadedImagePreview = null;
     }
 
-    private void CreateNewPost()
+    private async Task CreateNewPost()
     {
-        if (!string.IsNullOrWhiteSpace(NewPostContent))
+        if (string.IsNullOrWhiteSpace(NewPostContent))
+            return;
+
+        try
         {
-            var newId = Posts.Any() ? Posts.Max(p => p.Id) + 1 : 1;
+            IsSaving = true;
 
-            var newPost = new Post
-            {
-                Id = newId,
-                UserId = 1, // Replace with actual user id from context
-                Content = NewPostContent,
-                Likes = 0,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = null,
-                User = new User
-                {
-                    Id = 1,
-                    Name = "You",
-                    ProfileImage = new UploadFile
-                    {
-                        FilePath = "https://randomuser.me/api/portraits/men/1.jpg"
-                    }
-                }
-            };
+            PostResponse response;
 
-            if (!string.IsNullOrEmpty(UploadedImagePreview))
+            if (UploadedImageFile != null)
             {
-                newPost.Image = new UploadFile
-                {
-                    Id = 1, // Replace with actual image id if saving to DB
-                    FilePath = UploadedImagePreview
-                };
-                newPost.ImageId = newPost.Image.Id;
+                using var stream = UploadedImageFile.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
+                response = await PostService.CreateAsync(
+                    stream,
+                    UploadedImageFile.Name,
+                    UploadedImageFile.ContentType,
+                    NewPostContent
+                );
+            }
+            else
+            {
+                using var emptyStream = new MemoryStream();
+                response = await PostService.CreateAsync(
+                    emptyStream,
+                    "", // or "empty.jpg" if API expects a name
+                    "application/octet-stream",
+                    NewPostContent
+                );
             }
 
-            Posts.Insert(0, newPost);
+            if (response.StatusCode is >= 200 and < 300)
+            {
+                Console.WriteLine("Post uploaded successfully.");
 
+                AlertData = new()
+                {
+                    IsVisible = true,
+                    Style = AlertTypeEnum.Information,
+                    Title = "Success",
+                    Message = "Your post was created successfully.",
+                    Position = AlertStylePositionEnum.BottomRight
+                };
+
+                await LoadPostsAsync();
+            }
+            else
+            {
+                Console.WriteLine($"Failed to upload post: {response.Message}");
+
+                AlertData = new()
+                {
+                    IsVisible = true,
+                    Style = AlertTypeEnum.Danger,
+                    Title = "Error",
+                    Message = response.Message ?? "Failed to create post.",
+                    Position = AlertStylePositionEnum.BottomRight
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            AlertData = new()
+            {
+                IsVisible = true,
+                Style = AlertTypeEnum.Danger,
+                Title = "Error",
+                Message = $"An error occurred: {ex.Message}",
+                Position = AlertStylePositionEnum.BottomRight
+            };
+        }
+        finally
+        {
+            IsSaving = false;
             CloseModal();
         }
     }

@@ -53,8 +53,30 @@ namespace Back.Services
                 };
             }
 
-            UploadFileResponse uploadedFile = await uploadFileService.CreateUploadFile(new UploadFileRequest() { File = model.Image }, context, JWT, appwriteClient);
-            if (uploadedFile.StatusCode < 200 && uploadedFile.StatusCode >= 300)
+            if (model.Image == null || model.Image.Length == 0)
+            {
+                var post = new Post
+                {
+                    Content = model.Content,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    UserId = userId
+                };
+
+                context.Posts.Add(post);
+                await context.SaveChangesAsync();
+
+                return new PostResponse
+                {
+                    Post = post,
+                    StatusCode = 200
+                };
+            }
+
+            UploadFileResponse uploadedFile = await uploadFileService.CreateUploadFile(
+                new UploadFileRequest { File = model.Image }, context, JWT, appwriteClient);
+
+            if (uploadedFile.StatusCode < 200 || uploadedFile.StatusCode >= 300)
             {
                 return new PostResponse
                 {
@@ -63,23 +85,24 @@ namespace Back.Services
                 };
             }
 
-            Post post = new()
+            var postWithImage = new Post
             {
                 Content = model.Content,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
                 UserId = userId,
-                ImageId = uploadedFile.File.Id,
+                ImageId = uploadedFile.File?.Id
             };
 
-            context.Posts.Add(post);
+            context.Posts.Add(postWithImage);
             await context.SaveChangesAsync();
 
             return new PostResponse
             {
-                Post = post,
+                Post = postWithImage,
                 StatusCode = 200
             };
+
         }
 
         public async Task<PostResponse> UpdatePostAsync(string JWT, int postId, PostForm model, ApplicationDbContext context)
@@ -223,9 +246,27 @@ namespace Back.Services
                 };
             }
 
-            IQueryable<Post> query = context.Posts.Include(p => p.Image)
+            IQueryable<Post> query = context.Posts.Include(p => p.Image).Include(p => p.User).ThenInclude(u => u.ProfileImage)
                 .Where(p => p.UserId == userId)
-                .OrderByDescending(p => p.CreatedAt);
+                .OrderByDescending(p => p.CreatedAt)
+                .Select(p => new Post()
+                {
+                    Id = p.Id,
+                    UserId = p.UserId,
+                    Content = p.Content,
+                    Likes = p.Likes,
+                    ImageId = p.ImageId,
+                    CreatedAt = p.CreatedAt,
+                    UpdatedAt = p.UpdatedAt,
+                    User = new User
+                    {
+                        Id = p.User.Id,
+                        Email = p.User.Email,
+                        ProfileImage = p.User.ProfileImage,
+                        ProfileImageId = p.User.ProfileImageId,
+                    },
+                    Image = p.Image
+                });
 
             var posts = query
                 .Skip((request.Page - 1) * request.PageSize)
@@ -265,7 +306,37 @@ namespace Back.Services
                 };
             }
 
-            var post = context.Posts.Include(p => p.Image).FirstOrDefault(p => p.Id == postId);
+            var post = context.Posts
+                .Include(p => p.Image)
+                .Include(p => p.User)
+                    .ThenInclude(u => u.ProfileImage)
+                .Where(p => p.Id == postId)
+                .Select(p => new Post()
+                {
+                    Id = p.Id,
+                    UserId = p.UserId,
+                    Content = p.Content,
+                    Likes = p.Likes,
+                    ImageId = p.ImageId,
+                    CreatedAt = p.CreatedAt,
+                    UpdatedAt = p.UpdatedAt,
+                    User = new User
+                    {
+                        Id = p.User.Id,
+                        Email = p.User.Email,
+                        ProfileImage = new UploadFile
+                        {
+                            Id = p.User.ProfileImage.Id,
+                            FilePath = p.User.ProfileImage.FilePath,
+                            // include other needed fields
+                        },
+                        ProfileImageId = p.User.ProfileImageId,
+                    },
+                    Image = p.Image
+                })
+                .FirstOrDefault();
+
+
             if (post == null)
             {
                 return new PostResponse
@@ -305,7 +376,24 @@ namespace Back.Services
                 };
             }
 
-            IQueryable<Post> query = context.Posts.Include(p => p.Image).OrderByDescending(p => p.CreatedAt);
+            IQueryable<Post> query = context.Posts.Include(p => p.Image).Include(p => p.User).ThenInclude(u => u.ProfileImage).OrderByDescending(p => p.CreatedAt).Select(p => new Post()
+            {
+                Id = p.Id,
+                UserId = p.UserId,
+                Content = p.Content,
+                Likes = p.Likes,
+                ImageId = p.ImageId,
+                CreatedAt = p.CreatedAt,
+                UpdatedAt = p.UpdatedAt,
+                User = new User
+                {
+                    Id = p.User.Id,
+                    Email = p.User.Email,
+                    ProfileImage = p.User.ProfileImage,
+                    ProfileImageId = p.User.ProfileImageId,
+                },
+                Image = p.Image
+            });
 
             if (!string.IsNullOrWhiteSpace(request.Search))
             {

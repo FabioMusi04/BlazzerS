@@ -2,6 +2,7 @@
 @inject NavigationManager Navigation
 @inject UserService UserService
 @inject AuthService AuthService
+@inject PostService PostService
 @inject IJSRuntime JSRuntime
 
 <PageTitle>Profile</PageTitle>
@@ -57,7 +58,9 @@
 
             <div class="bg-gray-800 rounded-2xl shadow p-6">
                 <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-semibold">Active Devices</h2>
+                    <h2 class="text-xl font-semibold">
+                        Active Devices (Count: @Sessions.Count of @TotalSessions))
+                    </h2>
                     <button class="text-sm bg-red-600 hover:bg-red-700 text-white px-4 py-1 rounded disabled:opacity-50"
                             disabled="@IsProcessing"
                             @onclick="LogoutAllDevices">
@@ -75,7 +78,7 @@
                 }
                 else
                 {
-                    <div class="space-y-3 overflow-y-auto max-h-[50vh] pr-1">
+                    <div class="session-scroll-container space-y-3 overflow-y-auto max-h-[50vh] pr-1">
                         @foreach (var session in Sessions)
                         {
                             <div class="bg-gray-700 p-4 rounded-lg flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 shadow">
@@ -99,17 +102,16 @@
                             </div>
                         }
 
-                        @if (Sessions.Count < TotalSessions)
-                        {
-                            <div @ref="SessionObserverRef" class="h-8"></div>
-                        }
+                        <div @ref="SessionObserverRef" class="h-8" style="@(Sessions.Count < TotalSessions ? "" : "display:none")"></div>
                     </div>
                 }
             </div>
         </div>
 
         <div class="bg-gray-700 rounded-2xl shadow p-6">
-            <h2 class="text-xl font-semibold mb-4 text-indigo-300">Your Threads</h2>
+            <h2 class="text-xl font-semibold mb-4 text-indigo-300">
+                Your Threads (Count: @Posts.Count of @TotalPosts))
+            </h2>
 
             @if (IsLoadingPosts)
             {
@@ -121,7 +123,7 @@
             }
             else
             {
-                <div class="space-y-4 overflow-y-auto max-h-[35vh] pr-1">
+                <div class="post-scroll-container space-y-4 overflow-y-auto max-h-[35vh] pr-1">
                     @foreach (var post in Posts)
                     {
                         <PostCard Post="post"
@@ -132,10 +134,7 @@
                                   Comments="new List<Comment>()" />
                     }
 
-                    @if (Posts.Count < TotalPosts)
-                    {
-                        <div @ref="PostObserverRef" class="h-8"></div>
-                    }
+                    <div @ref="PostObserverRef" class="h-16" style="@(Posts.Count < TotalPosts ? "" : "display:none")"></div>
                 </div>
             }
         </div>
@@ -164,8 +163,14 @@
 
     private ElementReference SessionObserverRef;
     private ElementReference PostObserverRef;
-    private int TotalSessions = 10;
-    private int TotalPosts = 10;
+    private int TotalSessions = 0;
+    private int TotalPosts = 0;
+
+    private PostPaginatedRequest PostPaginatedRequest = new()
+    {
+        Page = 1,
+        PageSize = 10
+    };
 
     private bool _initialized = false;
 
@@ -187,18 +192,33 @@
         ProfilePictureUrl = UserData?.ProfileImage?.FilePath ?? "https://example.com/default-profile.png";
     }
 
-
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && !_initialized && SessionObserverRef.Context != null)
+        if (firstRender && !_initialized)
         {
-            _initialized = true;
+            await Task.Delay(500);
+            if (SessionObserverRef.Context != null && PostObserverRef.Context != null)
+            {
+                Console.WriteLine("Setup infinitescroll...");
+                _initialized = true;
 
-            await JSRuntime.InvokeVoidAsync("initInfiniteScroll",
-                DotNetObjectReference.Create(this),
-                SessionObserverRef);
+                await JSRuntime.InvokeVoidAsync("initInfiniteScroll",
+                    DotNetObjectReference.Create(this),
+                    SessionObserverRef,
+                    "OnSessionObserverIntersect",
+                    ".session-scroll-container"
+                );
+
+                await JSRuntime.InvokeVoidAsync("initInfiniteScroll",
+                    DotNetObjectReference.Create(this),
+                    PostObserverRef,
+                    "OnPostObserverIntersect",
+                    ".post-scroll-container"
+                );
+            }
         }
     }
+
 
     private async Task LoadUserData()
     {
@@ -227,60 +247,25 @@
         try
         {
             IsLoadingPosts = true;
-            Posts = new List<Post>
+
+            var postsResponse = await PostService.GetMyAsync(PostPaginatedRequest);
+
+            if (postsResponse.StatusCode is >= 200 and < 300)
             {
-                new Post
-{
-Id = 1,
-UserId = 1,
-Content = "Hey everyone! Just finished a cool Blazor project. Loving this framework!",
-Likes = 12,
-CreatedAt = DateTime.UtcNow.AddMinutes(-10),
-User = new User
-{
-Id = 1,
-Name = "Alice Johnson",
-ProfileImage = new UploadFile
-{
-FilePath = "https://randomuser.me/api/portraits/women/68.jpg"
-}
-}
-},
-new Post
-{
-Id = 2,
-UserId = 2,
-Content = "Does anyone have tips for optimizing Blazor server-side performance?",
-Likes = 20,
-CreatedAt = DateTime.UtcNow.AddHours(-1),
-User = new User
-{
-Id = 2,
-Name = "Bob Smith",
-ProfileImage = new UploadFile
-{
-FilePath = "https://randomuser.me/api/portraits/men/15.jpg"
-}
-}
-},
-new Post
-{
-Id = 3,
-UserId = 3,
-Content = "Just tried the new Tailwind CSS plugin. Styling is so much easier now!",
-Likes = 8,
-CreatedAt = DateTime.UtcNow.AddDays(-1),
-User = new User
-{
-Id = 3,
-Name = "Carmen Lee",
-ProfileImage = new UploadFile
-{
-FilePath = "https://randomuser.me/api/portraits/women/22.jpg"
-}
-}
-}
-            };
+                Posts = postsResponse.Items.ToList();
+                TotalPosts = postsResponse.TotalCount;
+            }
+            else
+            {
+                AlertData = new()
+                {
+                    IsVisible = true,
+                    Style = AlertTypeEnum.Danger,
+                    Message = "Failed to load posts. Please try again later.",
+                    Title = "Error",
+                    Position = AlertStylePositionEnum.BottomRight
+                };
+            }
         }
         finally
         {
@@ -334,6 +319,27 @@ FilePath = "https://randomuser.me/api/portraits/women/22.jpg"
 
         IsLoadingMoreSessions = false;
     }
+
+    [JSInvokable]
+    public async Task OnPostObserverIntersect() => await LoadMorePosts();
+
+    private async Task LoadMorePosts()
+    {
+        if (IsLoadingMorePosts || Posts.Count >= TotalPosts) return;
+        IsLoadingMorePosts = true;
+
+        PostPaginatedRequest.Page += 1;
+        var response = await PostService.GetMyAsync(PostPaginatedRequest);
+
+        if (response.StatusCode is >= 200 and < 300)
+        {
+            Posts.AddRange(response.Items);
+            StateHasChanged();
+        }
+
+        IsLoadingMorePosts = false;
+    }
+
 
     private async Task SaveUser()
     {
