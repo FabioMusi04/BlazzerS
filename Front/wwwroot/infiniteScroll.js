@@ -1,14 +1,20 @@
-﻿window.initInfiniteScroll = (dotnetHelper, sessionRef/*, postRef*/) => {
-    console.log(dotnetHelper);
-    console.log(sessionRef)
-    const options = { threshold: 1.0 };
+﻿window.initInfiniteScroll = (dotnetHelper, elementRef, dotnetMethodName, container) => {
+    const scrollContainer = container
+        ? document.querySelector(container)
+        : null;
 
-    if (sessionRef) {
-        const observer1 = new IntersectionObserver(entries => {
-            if (entries[0].isIntersecting) {
-                dotnetHelper.invokeMethodAsync('OnSessionObserverIntersect');
-            }
-        }, options);
-        observer1.observe(sessionRef);
-    }
+    const options = {
+        threshold: 0.5,
+        root: scrollContainer
+    };
+
+    if (!elementRef) return;
+
+    const observer = new IntersectionObserver(entries => {
+        if (entries[0].isIntersecting) {
+            dotnetHelper.invokeMethodAsync(dotnetMethodName);
+        }
+    }, options);
+
+    observer.observe(elementRef);
 };

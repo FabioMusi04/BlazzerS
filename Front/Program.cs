@@ -33,6 +33,7 @@ namespace Front
             builder.Services.AddScoped<UserService>();
             builder.Services.AddScoped<DeviceService>();
             builder.Services.AddScoped<NotificationService>();
+            builder.Services.AddScoped<PostService>();
 
             builder.Services.AddAuthorizationCore();
 
