@@ -5,6 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.OpenApi.Models;
 using Models;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Threading.RateLimiting;
 
 namespace Back
 {
@@ -63,6 +65,20 @@ namespace Back
                 .ReplaceService<IHistoryRepository, NonLockingNpgsqlHistoryRepository>()
                 );
 
+            builder.Services.AddRateLimiter(options =>
+            {
+                options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+                    RateLimitPartition.GetFixedWindowLimiter(
+                        partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
+                        factory: key => new FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit = 10,
+                            Window = TimeSpan.FromSeconds(5), 
+                            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                            QueueLimit = 0
+                        }));
+            });
+
             builder.Services.AddOpenApi();
 
             builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
@@ -77,13 +93,14 @@ namespace Back
             builder.Services.AddScoped<INotificationService, NotificationService>();
             builder.Services.AddScoped<ITokenVerificationService, TokenVerificationService>();
             builder.Services.AddScoped<IAuthService, AuthService>();
-
             builder.Services.AddScoped<IScheduledJob, NotificationEmailSender>();
             builder.Services.AddScoped<IScheduledJob, NotificationPushSender>();
 
             var app = builder.Build();
 
             app.UseCors("origins");
+
+            app.UseRateLimiter();
 
             app.MapOpenApi();
             app.UseSwagger();
