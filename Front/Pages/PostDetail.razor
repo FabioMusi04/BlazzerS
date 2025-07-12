@@ -1,54 +1,58 @@
 @page "/post/{PostId:int}"
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
+
 @inject NavigationManager Navigation
 @inject IJSRuntime js
+@inject PostService PostService
 
-<div class="min-h-screen bg-gray-900 text-gray-200 px-4 py-8 mx-auto max-w-3xl">
+<div class="min-h-screen bg-gray-900 text-gray-200 px-4 py-6 sm:py-10 sm:px-6 md:px-8 lg:px-10 xl:px-16 max-w-4xl mx-auto">
     @if (SelectedPost != null)
     {
-        <div class="bg-gray-800 p-6 rounded-xl shadow-md border border-gray-700">
-            <div class="flex items-center mb-4 space-x-4">
+        <div class="bg-gray-800 p-4 sm:p-6 rounded-xl shadow-md border border-gray-700">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center mb-4 space-y-3 sm:space-y-0 sm:space-x-4">
                 <img class="w-12 h-12 rounded-full border border-gray-600" src="@SelectedPost.User.ProfileImage.FilePath" alt="@SelectedPost.User.Email" />
                 <div>
-                    <h2 class="text-lg font-semibold text-indigo-400">@SelectedPost.User.Email</h2>
+                    <h2 class="text-base sm:text-lg font-semibold text-indigo-400">@SelectedPost.User.Email</h2>
                     <p class="text-sm text-gray-400">@SelectedPost.CreatedAt.ToLocalTime().ToString("f")</p>
                 </div>
             </div>
 
-            <p class="text-lg mb-4">@SelectedPost.Content</p>
+            <p class="text-base sm:text-lg mb-4 whitespace-pre-wrap break-words overflow-hidden break-all">
+                @SelectedPost.Content
+            </p>
 
             @if (!string.IsNullOrEmpty(SelectedPost.Image?.FilePath))
             {
-                <img src="@SelectedPost.Image?.FilePath" alt="Post image" class="rounded-lg border border-gray-700 mb-4 max-h-96 object-contain" />
+                <img src="@SelectedPost.Image?.FilePath" alt="Post image" class="rounded-lg border border-gray-700 mb-4 max-h-96 object-contain w-full" />
             }
 
-            <div class="flex items-center text-sm text-gray-400 space-x-4">
+            <div class="flex flex-wrap items-center text-sm text-gray-400 gap-4">
                 <span>👍 @SelectedPost.Likes Likes</span>
                 <span>💬 @TotalComments Comments</span>
             </div>
         </div>
 
-        <div class="mt-8 relative" style="height: 500px;">
-            <h3 class="text-xl font-bold mb-4 text-indigo-400">Comments</h3>
+        <div class="mt-8 relative" style="height: 65vh;">
+            <h3 class="text-lg sm:text-xl font-bold mb-4 text-indigo-400">Comments</h3>
 
             <div @ref="CommentsContainerRef"
                  class="overflow-y-auto pr-2"
-                 style="max-height: 370px;"
-                 @onscroll="OnCommentsScroll">
+                 style="height: 55vh;">
                 @if (Comments != null && Comments.Any())
                 {
                     @foreach (var comment in Comments)
                     {
-                        <div class="mb-4 p-4 bg-gray-800 rounded-lg border border-gray-700 flex space-x-3">
+                        <div class="mb-4 p-4 bg-gray-800 rounded-lg border border-gray-700 flex items-start space-x-3">
                             <img src="@comment.User.ProfileImage.FilePath" class="w-10 h-10 rounded-full border border-gray-600" />
-                            <div>
+                            <div class="w-full">
                                 <p class="text-sm font-semibold text-indigo-300">@comment.User.Email</p>
                                 <p class="text-sm text-gray-400">@comment.User.CreatedAt.ToLocalTime().ToString("g")</p>
-                                <p class="mt-1 text-gray-200">@comment.Content</p>
+                                <p class="mt-1 text-gray-200 break-words whitespace-pre-wrap">@comment.Content</p>
                             </div>
                         </div>
                     }
+
                     @if (IsLoadingComments)
                     {
                         <div class="text-center text-gray-400 py-2">Loading more comments...</div>
@@ -81,7 +85,9 @@
     }
 </div>
 
+
 @code {
+
     [Parameter] public int PostId { get; set; }
 
     private Post? SelectedPost;
@@ -94,12 +100,21 @@
     private bool IsLoadingComments = false;
     private ElementReference CommentsContainerRef;
 
-    protected override void OnInitialized()
+    protected override async void OnInitialized()
     {
-        var allPosts = GetAllPosts();
-        SelectedPost = allPosts.FirstOrDefault(p => p.Id == PostId);
+        var post = await PostService.GetByIdAsync(PostId);
+        if (post != null && post.StatusCode >= 200 && post.StatusCode < 300)
+        {
+            SelectedPost = post.Post;
+        }
+        else
+        {
+            Navigation.NavigateTo("/404");
+            return;
+        }
+        
 
-        TotalComments = GetAllComments(PostId).Count;
+        TotalComments = GetAllComments().Count;
         LoadComments();
     }
 
@@ -130,35 +145,8 @@
         }
     }
 
-    private List<Post> GetAllPosts() => new()
-    {
-        new Post
-        {
-            Id = 1,
-            UserId = 1,
-            Content = "This is a sample post content for testing.",
-            CreatedAt = DateTime.UtcNow.AddMinutes(-45),
-            Likes = 10,
-            Image = new UploadFile
-            {
-                Id = 1,
-                FilePath = "https://picsum.photos/seed/picsum/800/400"
-            },
-            User = new User
-            {
-                Id = 1,
-                Email = "test@test.com",
-                ProfileImage = new UploadFile
-                {
-                    Id = 1,
-                    FilePath = "https://randomuser.me/api/portraits"
-                }
-            }
-        },
-    };
-
     // Simulate a large list of comments for infinite scroll
-    private List<Comment> GetAllComments(int postId)
+    private List<Comment> GetAllComments()
     {
         var baseComments = new List<Comment>
         {
@@ -198,7 +186,6 @@
             }
         };
 
-        // Simulate more comments for infinite scroll
         var comments = new List<Comment>();
         for (int i = 0; i < 30; i++)
         {
@@ -217,7 +204,7 @@
     private void LoadComments()
     {
         IsLoadingComments = true;
-        var allComments = GetAllComments(PostId)
+        var allComments = GetAllComments()
             .OrderByDescending(c => c.CreatedAt)
             .ToList();
 
@@ -233,28 +220,5 @@
 
         IsLoadingComments = false;
         StateHasChanged();
-    }
-
-    private async Task OnCommentsScroll()
-    {
-        var scrollInfo = await js.InvokeAsync<ScrollInfo>("getScrollInfo", CommentsContainerRef);
-
-        // If near bottom and not already loading
-        if (!IsLoadingComments && scrollInfo.ScrollHeight - scrollInfo.ScrollTop - scrollInfo.ClientHeight < 50)
-        {
-            var allComments = GetAllComments(PostId);
-            if (Comments.Count < allComments.Count)
-            {
-                CurrentPage++;
-                LoadComments();
-            }
-        }
-    }
-
-    public class ScrollInfo
-    {
-        public double ScrollTop { get; set; }
-        public double ScrollHeight { get; set; }
-        public double ClientHeight { get; set; }
     }
 }

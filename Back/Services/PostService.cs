@@ -329,7 +329,6 @@ namespace Back.Services
                         {
                             Id = p.User.ProfileImage.Id,
                             FilePath = p.User.ProfileImage.FilePath,
-                            // include other needed fields
                         },
                         ProfileImageId = p.User.ProfileImageId,
                     },
@@ -377,24 +376,34 @@ namespace Back.Services
                 };
             }
 
-            IQueryable<Post> query = context.Posts.Include(p => p.Image).Include(p => p.User).ThenInclude(u => u.ProfileImage).OrderByDescending(p => p.CreatedAt).Select(p => new Post()
-            {
-                Id = p.Id,
-                UserId = p.UserId,
-                Content = p.Content,
-                Likes = p.Likes,
-                ImageId = p.ImageId,
-                CreatedAt = p.CreatedAt,
-                UpdatedAt = p.UpdatedAt,
-                User = new User
+            IQueryable<Post> query = context.Posts
+                .Include(p => p.Image)
+                .Include(p => p.User)
+                    .ThenInclude(u => u.ProfileImage)
+                .OrderByDescending(p => p.CreatedAt)
+                .Select(p => new Post()
                 {
-                    Id = p.User.Id,
-                    Email = p.User.Email,
-                    ProfileImage = p.User.ProfileImage,
-                    ProfileImageId = p.User.ProfileImageId,
-                },
-                Image = p.Image
-            });
+                    Id = p.Id,
+                    UserId = p.UserId,
+                    Content = p.Content,
+                    Likes = p.Likes,
+                    ImageId = p.ImageId,
+                    CreatedAt = p.CreatedAt,
+                    UpdatedAt = p.UpdatedAt,
+                    User = new User
+                    {
+                        Id = p.User.Id,
+                        Email = p.User.Email,
+                        ProfileImage = p.User.ProfileImage,
+                        ProfileImageId = p.User.ProfileImageId,
+                    },
+                    Image = p.Image
+                });
+
+            if (request.UserId.HasValue)
+            {
+                query = query.Where(p => p.UserId == request.UserId.Value);
+            }
 
             if (!string.IsNullOrWhiteSpace(request.Search))
             {
@@ -417,6 +426,5 @@ namespace Back.Services
                 TotalCount = total
             };
         }
-
     }
 }

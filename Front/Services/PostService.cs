@@ -174,7 +174,7 @@ namespace Front.Services
                 using var fileContent = new StreamContent(fileStream);
                 fileContent.Headers.ContentType = new MediaTypeHeaderValue(contentType ?? "application/octet-stream");
 
-                content.Add(fileContent, "file", fileName ?? "upload.dat");
+                content.Add(fileContent, "image", fileName ?? "upload.dat");
                 content.Add(new StringContent(postContent ?? string.Empty), "content");
 
                 var responseWithFile = await _http.PostAsync("api/Post", content);
@@ -197,12 +197,23 @@ namespace Front.Services
             }
         }
 
-
         public async Task<PostResponse> UpdateAsync(int id, PostForm post)
         {
             try
             {
-                HttpResponseMessage response = await _http.PutAsJsonAsync($"api/Post/{id}", post);
+                MultipartFormDataContent multipartFormDataContent = new()
+                    {
+                        { new StringContent(post.Content ?? string.Empty), "Content" }
+                    };
+
+                if (post.Image != null)
+                {
+                    var streamContent = new StreamContent(post.Image.OpenReadStream());
+                    multipartFormDataContent.Add(streamContent, "Image", post.Image.Name);
+                }
+
+                HttpResponseMessage response = await _http.PutAsync($"api/Post/{id}", multipartFormDataContent);
+
                 PostResponse? content = await response.Content.ReadFromJsonAsync<PostResponse>();
 
                 if (response.IsSuccessStatusCode && content != null)

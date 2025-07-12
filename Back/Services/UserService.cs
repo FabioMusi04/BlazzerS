@@ -254,16 +254,16 @@ namespace Back.Services
                 };
             }
 
-            if (currentUser.Role != UserRoleEnum.Admin)
-            {
-                return new UserResponse
-                {
-                    StatusCode = (int)System.Net.HttpStatusCode.Forbidden,
-                    Message = "Solo gli amministratori possono accedere a questa risorsa."
-                };
-            }
+            //if (currentUser.Role != UserRoleEnum.Admin)
+            //{
+            //    return new UserResponse
+            //    {
+            //        StatusCode = (int)System.Net.HttpStatusCode.Forbidden,
+            //        Message = "Solo gli amministratori possono accedere a questa risorsa."
+            //    };
+            //}
 
-            User? user = context.Users.FirstOrDefault(u => u.Id == id);
+            User? user = context.Users.Include(u => u.ProfileImage).FirstOrDefault(u => u.Id == id);
 
             if (user == null)
             {

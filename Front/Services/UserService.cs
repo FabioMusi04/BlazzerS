@@ -76,6 +76,32 @@ namespace Front.Services
             }
         }
 
+        public async Task<UserResponse> GetByIdAsync(int userId)
+        {
+            try
+            {
+                HttpResponseMessage response = await _http.GetAsync($"api/User/{userId}");
+                UserResponse? content = await response.Content.ReadFromJsonAsync<UserResponse>();
+                if (response.IsSuccessStatusCode && content != null)
+                {
+                    return content;
+                }
+                return new UserResponse
+                {
+                    Message = content?.Message ?? "An unknown error occurred.",
+                    StatusCode = content?.StatusCode ?? (int)response.StatusCode
+                };
+            }
+            catch (Exception ex)
+            {
+                return new UserResponse
+                {
+                    Message = $"Request failed: {ex.Message}",
+                    StatusCode = 500
+                };
+            }
+        }
+
         public async Task<UserResponse> GetMeAsync()
         {
             try

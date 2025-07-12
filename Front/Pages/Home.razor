@@ -4,6 +4,7 @@
 @using Microsoft.AspNetCore.Components.Forms
 
 @inject PostService PostService
+@inject UserService UserService
 @inject IJSRuntime JSRuntime
 
 <div class="min-h-screen bg-gray-900 text-gray-200 px-4 py-8 mx-auto max-w-7xl">
@@ -37,7 +38,8 @@
                                       Comments="GetCommentsForPost(post.Id)"
                                       ToggleComments="ToggleComments"
                                       LikePost="LikePost"
-                                      SharePost="SharePost" />
+                                      SharePost="SharePost"
+                                      OnPostDeletedLocally="HandlePostDeleted" />
                         </div>
                     }
 
@@ -165,6 +167,11 @@
                 );
             }
         }
+    }
+
+    private void HandlePostDeleted(int postId)
+    {
+        Posts.RemoveAll(p => p.Id == postId);
     }
 
     protected override async Task OnInitializedAsync()

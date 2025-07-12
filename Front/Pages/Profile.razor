@@ -1,4 +1,5 @@
-﻿@page "/profile"
+﻿@page "/profile/{UserId:int?}"
+
 @inject NavigationManager Navigation
 @inject UserService UserService
 @inject AuthService AuthService
@@ -23,89 +24,92 @@
                 else if (UserData != null)
                 {
                     <div class="space-y-4">
-                        <div class="space-y-2">
-                            <label class="block text-sm font-medium text-gray-300">Profile Picture</label>
+                        <img src="@ProfilePictureUrl" class="h-24 w-24 rounded-full object-cover border border-gray-600" />
 
-                            @if (!string.IsNullOrEmpty(ProfilePictureUrl))
-                            {
-                                <img src="@ProfilePictureUrl" class="h-24 w-24 rounded-full object-cover border border-gray-600" />
-                            }
-
-                            <InputFile OnChange="UploadProfilePicture"
-                                       class="block text-sm text-gray-400 file:bg-indigo-600 file:text-white file:rounded file:border-0 file:px-4 file:py-1 hover:file:bg-indigo-700" />
-                        </div>
-
-                        <input class="bg-gray-700 border border-gray-600 p-3 rounded w-full" @bind="UserData.Name" placeholder="Name" />
-                        <input class="bg-gray-700 border border-gray-600 p-3 rounded w-full" @bind="UserData.Surname" placeholder="Surname" />
                         <input class="bg-gray-800 text-gray-500 p-3 rounded w-full" value="@UserData.Email" disabled />
                         <p class="text-sm text-gray-400">Email confirmed: @UserData.EmailConfirmed</p>
-                        <button class="w-full px-4 py-2 rounded bg-indigo-600 hover:bg-indigo-700 transition disabled:opacity-50"
-                                disabled="@IsSaving"
-                                @onclick="SaveUser">
-                            @if (IsSaving)
-                            {
-                                <span class="animate-spin mr-2">🔄</span>
-                                <span>Saving...</span>
-                            }
-                            else
-                            {
-                                <span>Save Changes</span>
-                            }
-                        </button>
-                    </div>
-                }
-            </div>
 
-            <div class="bg-gray-800 rounded-2xl shadow p-6">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-semibold">
-                        Active Devices (Count: @Sessions.Count of @TotalSessions))
-                    </h2>
-                    <button class="text-sm bg-red-600 hover:bg-red-700 text-white px-4 py-1 rounded disabled:opacity-50"
-                            disabled="@IsProcessing"
-                            @onclick="LogoutAllDevices">
-                        Logout All
-                    </button>
-                </div>
-
-                @if (IsLoadingSessions)
-                {
-                    <p class="text-gray-400">Loading sessions...</p>
-                }
-                else if (!Sessions.Any())
-                {
-                    <p class="text-gray-400">No active sessions.</p>
-                }
-                else
-                {
-                    <div class="session-scroll-container space-y-3 overflow-y-auto max-h-[50vh] pr-1">
-                        @foreach (var session in Sessions)
+                        @if (IsViewingOwnProfile)
                         {
-                            <div class="bg-gray-700 p-4 rounded-lg flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 shadow">
-                                <div class="text-sm">
-                                    <p><span class="font-semibold">IP:</span> @session.IPAddress</p>
-                                    <p class="text-gray-400 truncate max-w-[200px]"><span class="font-semibold">Device:</span> @session.UserAgent</p>
-                                    <p class="text-xs text-gray-500">Last seen: @session.LastAccessedAt?.ToLocalTime().ToString("g")</p>
-                                </div>
-                                <button class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm disabled:opacity-50"
-                                        disabled="@IsProcessing"
-                                        @onclick="@(() => LogoutDevice(session.DeviceId))">
-                                    @if (IsProcessing)
+                            <div class="space-y-2 mt-4">
+                                <label class="block text-sm font-medium text-gray-300">Profile Picture</label>
+                                <InputFile OnChange="UploadProfilePicture"
+                                           class="block text-sm text-gray-400 file:bg-indigo-600 file:text-white file:rounded file:border-0 file:px-4 file:py-1 hover:file:bg-indigo-700" />
+                                <input class="bg-gray-700 border border-gray-600 p-3 rounded w-full mt-2" @bind="UserData.Name" placeholder="Name" />
+                                <input class="bg-gray-700 border border-gray-600 p-3 rounded w-full" @bind="UserData.Surname" placeholder="Surname" />
+                                <button class="w-full px-4 py-2 rounded bg-indigo-600 hover:bg-indigo-700 transition disabled:opacity-50 mt-4"
+                                        disabled="@IsSaving"
+                                        @onclick="SaveUser">
+                                    @if (IsSaving)
                                     {
-                                        <span class="animate-spin">⏳</span>
+                                        <span class="animate-spin mr-2">🔄</span>
+                                        <span>Saving...</span>
                                     }
                                     else
                                     {
-                                        <span>Logout</span>
+                                        <span>Save Changes</span>
                                     }
                                 </button>
                             </div>
                         }
-
-                        <div @ref="SessionObserverRef" class="h-8" style="@(Sessions.Count < TotalSessions ? "" : "display:none")"></div>
                     </div>
                 }
+
             </div>
+
+            @if (IsViewingOwnProfile)
+            {
+                <div class="bg-gray-800 rounded-2xl shadow p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold">
+                            Active Devices (Count: @Sessions.Count of @TotalSessions))
+                        </h2>
+                        <button class="text-sm bg-red-600 hover:bg-red-700 text-white px-4 py-1 rounded disabled:opacity-50"
+                                disabled="@IsProcessing"
+                                @onclick="LogoutAllDevices">
+                            Logout All
+                        </button>
+                    </div>
+
+                    @if (IsLoadingSessions)
+                    {
+                        <p class="text-gray-400">Loading sessions...</p>
+                    }
+                    else if (!Sessions.Any())
+                    {
+                        <p class="text-gray-400">No active sessions.</p>
+                    }
+                    else
+                    {
+                        <div class="session-scroll-container space-y-3 overflow-y-auto max-h-[50vh] pr-1">
+                            @foreach (var session in Sessions)
+                            {
+                                <div class="bg-gray-700 p-4 rounded-lg flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 shadow">
+                                    <div class="text-sm">
+                                        <p><span class="font-semibold">IP:</span> @session.IPAddress</p>
+                                        <p class="text-gray-400 truncate max-w-[200px]"><span class="font-semibold">Device:</span> @session.UserAgent</p>
+                                        <p class="text-xs text-gray-500">Last seen: @session.LastAccessedAt?.ToLocalTime().ToString("g")</p>
+                                    </div>
+                                    <button class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm disabled:opacity-50"
+                                            disabled="@IsProcessing"
+                                            @onclick="@(() => LogoutDevice(session.DeviceId))">
+                                        @if (IsProcessing)
+                                        {
+                                            <span class="animate-spin">⏳</span>
+                                        }
+                                        else
+                                        {
+                                            <span>Logout</span>
+                                        }
+                                    </button>
+                                </div>
+                            }
+
+                            <div @ref="SessionObserverRef" class="h-8" style="@(Sessions.Count < TotalSessions ? "" : "display:none")"></div>
+                        </div>
+                    }
+                </div>
+            }
         </div>
 
         <div class="bg-gray-700 rounded-2xl shadow p-6">
@@ -131,7 +135,8 @@
                                   LikePost="@(id => {})"
                                   SharePost="@(id => {})"
                                   IsCommentsVisible="false"
-                                  Comments="new List<Comment>()" />
+                                  Comments="new List<Comment>()"
+                                  OnPostDeletedLocally="HandlePostDeleted" />
                     }
 
                     <div @ref="PostObserverRef" class="h-16" style="@(Posts.Count < TotalPosts ? "" : "display:none")"></div>
@@ -143,6 +148,10 @@
 
 
 @code {
+    [Parameter]
+    public int? UserId { get; set; }
+    private bool IsViewingOwnProfile => UserId == null || UserId <= 0;
+
     User? UserData = null;
     string? ProfilePictureUrl = null;
 
@@ -182,9 +191,22 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadUserData();
-        await LoadPosts();
-        await LoadSessions();
+        if (IsViewingOwnProfile)
+        {
+            await LoadUserData();
+            await LoadPosts();
+            await LoadSessions();
+        }
+        else
+        {
+            await LoadUserDataById(UserId);
+            await LoadPostsByUser(UserId);
+        }
+    }
+
+    private void HandlePostDeleted(int postId)
+    {
+        Posts.RemoveAll(p => p.Id == postId);
     }
 
     private void GetProfilePictureUrl()
@@ -219,7 +241,6 @@
         }
     }
 
-
     private async Task LoadUserData()
     {
         try
@@ -239,6 +260,70 @@
         finally
         {
             IsLoadingUser = false;
+        }
+    }
+
+    private async Task LoadUserDataById(int? userId)
+    {
+        if (!userId.HasValue || userId <= 0)
+        {
+            Navigation.NavigateTo("/404");
+            return;
+        }
+
+        try
+        {
+            IsLoadingUser = true;
+            var response = await UserService.GetByIdAsync(userId.Value);
+            if (response.StatusCode is >= 200 and < 300)
+            {
+                UserData = response.User;
+                GetProfilePictureUrl();
+            }
+            else
+            {
+                Navigation.NavigateTo("/404");
+            }
+        }
+        finally
+        {
+            IsLoadingUser = false;
+        }
+    }
+
+    private async Task LoadPostsByUser(int? userId)
+    {
+        if (!userId.HasValue || userId <= 0)
+        {
+            Navigation.NavigateTo("/404");
+            return;
+        }
+        try
+        {
+            IsLoadingPosts = true;
+            PostPaginatedRequest.UserId = userId.Value;
+
+            var postsResponse = await PostService.GetAllAsync(PostPaginatedRequest);
+            if (postsResponse.StatusCode is >= 200 and < 300)
+            {
+                Posts = postsResponse.Items.ToList();
+                TotalPosts = postsResponse.TotalCount;
+            }
+            else
+            {
+                AlertData = new()
+                {
+                    IsVisible = true,
+                    Style = AlertTypeEnum.Danger,
+                    Message = "Failed to load posts. Please try again later.",
+                    Title = "Error",
+                    Position = AlertStylePositionEnum.BottomRight
+                };
+            }
+        }
+        finally
+        {
+            IsLoadingPosts = false;
         }
     }
 

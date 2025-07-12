@@ -156,3 +156,27 @@ code {
             transform: translateX(0);
         }
 }
+ Custom scrollbar for post scroll container 
+.post-scroll-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.post-scroll-container::-webkit-scrollbar-track {
+    background: #1f2937;  gray-800 
+    border-radius: 8px;
+}
+
+.post-scroll-container::-webkit-scrollbar-thumb {
+    background-color: #6366f1;  indigo-500 
+    border-radius: 8px;
+}
+
+    .post-scroll-container::-webkit-scrollbar-thumb:hover {
+        background-color: #4f46e5;  indigo-600 
+    }
+
+ Firefox support 
+.post-scroll-container {
+    scrollbar-color: #6366f1 #1f2937;
+    scrollbar-width: thin;
+}
