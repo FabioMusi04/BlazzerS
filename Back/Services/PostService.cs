@@ -1,4 +1,5 @@
 ﻿using Back.Services.AppwriteIO;
+using Back.Services.Helpers;
 using Microsoft.EntityFrameworkCore;
 using Models;
 using Models.front;
@@ -57,7 +58,7 @@ namespace Back.Services
             {
                 var post = new Post
                 {
-                    Content = model.Content,
+                    Content = Utils.SanitizeHtml(model.Content),
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow,
                     UserId = userId
@@ -148,7 +149,7 @@ namespace Back.Services
                 };
             }
 
-            post.Content = model.Content;
+            post.Content = Utils.SanitizeHtml(model.Content);
             post.UpdatedAt = DateTime.UtcNow;
 
             await context.SaveChangesAsync();

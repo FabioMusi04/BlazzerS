@@ -112,7 +112,7 @@ namespace Back.Services
             {
                 Email = request.Email,
                 Password = hashedPassword,
-                Name = request.Name,
+                Name = Utils.SanitizeHtml(request.Name),
                 Surname = request.Surname,
                 Role = 0
             };

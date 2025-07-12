@@ -113,7 +113,7 @@ namespace Back.Services
                 };
             }
 
-            user.Name = updatedUser.Name;
+            user.Name = Utils.SanitizeHtml(updatedUser.Name);
             user.Surname = updatedUser.Surname;
             user.Role = updatedUser.Role;
             user.UpdatedAt = DateTime.UtcNow;

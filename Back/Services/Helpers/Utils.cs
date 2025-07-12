@@ -1,4 +1,5 @@
 ﻿using Back.Services.AppwriteIO;
+using Ganss.Xss;
 using Models;
 using Models.enums;
 using Models.http;
@@ -274,6 +275,12 @@ namespace Back.Services.Helpers
                 StatusCode = 201,
                 File = uploadFile
             };
+        }
+
+        public static string SanitizeHtml(string html)
+        {
+            var sanitizer = new HtmlSanitizer();
+            return sanitizer.Sanitize(html);
         }
     }
 }
