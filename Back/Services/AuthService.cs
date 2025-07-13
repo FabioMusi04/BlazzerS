@@ -342,7 +342,7 @@ namespace Back.Services
             };
         }
 
-        private static string GenerateJwtToken(User user, string jti, int duration = 1)
+        private static string GenerateJwtToken(User user, string jti, int duration = 15)
         {
             byte[] key = new System.Text.UTF8Encoding().GetBytes("baldman_eroe_notturno_gey_che_combatte_contro_gli_etero");
             Claim[] claims =

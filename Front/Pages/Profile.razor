@@ -149,8 +149,6 @@
 
 @code {
 
-
-
     [Parameter]
     public int? UserId { get; set; }
     private bool IsViewingOwnProfile => UserId == null || UserId <= 0;
@@ -197,6 +195,10 @@
         if (IsViewingOwnProfile)
         {
             await LoadUserData();
+            if (UserData == null)
+            {
+                return; 
+            }
             await LoadPosts();
             await LoadSessions();
         }
@@ -258,6 +260,8 @@
             else
             {
                 Navigation.NavigateTo("/login");
+
+                return;
             }
         }
         finally

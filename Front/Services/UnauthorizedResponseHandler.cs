@@ -1,27 +1,21 @@
-﻿using Front.Services;
-using Microsoft.AspNetCore.Components;
+﻿using Microsoft.AspNetCore.Components;
 using Models.http;
 using System.Net.Http.Json;
 using System.Text.Json;
 
-public class UnauthorizedResponseHandler : DelegatingHandler
+namespace Front.Services;
+
+public class UnauthorizedResponseHandler(
+    NavigationManager navigation,
+    CustomAuthStateProvider authProvider,
+    IHttpClientFactory httpClientFactory) : DelegatingHandler
 {
-    private readonly NavigationManager _navigation;
-    private readonly CustomAuthStateProvider _authProvider;
-    private readonly IHttpClientFactory _httpClientFactory;
-
-    public UnauthorizedResponseHandler(
-        NavigationManager navigation,
-        CustomAuthStateProvider authProvider,
-        IHttpClientFactory httpClientFactory)
-    {
-        _navigation = navigation;
-        _authProvider = authProvider;
-        _httpClientFactory = httpClientFactory;
-    }
-
+    private readonly NavigationManager _navigation = navigation;
+    private readonly CustomAuthStateProvider _authProvider = authProvider;
+    private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
     private static readonly SemaphoreSlim _refreshLock = new(1, 1);
     private static bool _isRefreshing = false;
+
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         var responseMapped = await base.SendAsync(request, cancellationToken);
@@ -34,29 +28,34 @@ public class UnauthorizedResponseHandler : DelegatingHandler
             {
                 await _refreshLock.WaitAsync(cancellationToken);
 
-                if (!_isRefreshing)
+                if (_isRefreshing)
                 {
-                    _isRefreshing = true;
-                    var client = _httpClientFactory.CreateClient("AuthorizedClient");
+                    return await RetryOriginalRequestAsync(request, cancellationToken);
+                }
 
-                    HttpResponseMessage responseRefresh = await client.PostAsync("api/Auth/refresh", null, cancellationToken);
-                    var refreshResponse = await responseRefresh.Content.ReadFromJsonAsync<LoginResponse>(cancellationToken: cancellationToken);
+                _isRefreshing = true;
 
-                    if (refreshResponse.StatusCode >= 200 && refreshResponse.StatusCode < 300 && refreshResponse != null)
+                var refreshClient = _httpClientFactory.CreateClient("BaseClient");
+                var refreshResponse = await refreshClient.PostAsync("api/Auth/refresh", null, cancellationToken);
+
+                if (refreshResponse.IsSuccessStatusCode)
+                {
+                    var loginResponse = await refreshResponse.Content.ReadFromJsonAsync<LoginResponse>(cancellationToken: cancellationToken);
+
+                    if (loginResponse is not null && loginResponse.StatusCode >= 200 && loginResponse.StatusCode < 300)
                     {
                         await _authProvider.ForceAuthenticationStateRefreshAsync();
-                        _isRefreshing = false;
-
-                        return await base.SendAsync(CloneRequest(request), cancellationToken);
+                        return await RetryOriginalRequestAsync(request, cancellationToken);
                     }
                 }
+
+                return responseMapped;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error during unauthorized response handling: {ex.Message}");
-                _isRefreshing = false;
-                _refreshLock.Release();
+                Console.WriteLine($"[AuthHandler] Exception: {ex.Message}");
                 _navigation.NavigateTo("/login");
+                return responseMapped; // anche in caso di errore restituisci la risposta originale
             }
             finally
             {
@@ -68,6 +67,13 @@ public class UnauthorizedResponseHandler : DelegatingHandler
         return responseMapped;
     }
 
+
+    private async Task<HttpResponseMessage> RetryOriginalRequestAsync(HttpRequestMessage originalRequest, CancellationToken cancellationToken)
+    {
+        var retryRequest = CloneRequest(originalRequest);
+        return await base.SendAsync(retryRequest, cancellationToken);
+    }
+
     private static HttpRequestMessage CloneRequest(HttpRequestMessage request)
     {
         var clone = new HttpRequestMessage(request.Method, request.RequestUri)
@@ -77,9 +83,7 @@ public class UnauthorizedResponseHandler : DelegatingHandler
         };
 
         foreach (var header in request.Headers)
-        {
             clone.Headers.TryAddWithoutValidation(header.Key, header.Value);
-        }
 
         return clone;
     }

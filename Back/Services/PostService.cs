@@ -325,12 +325,12 @@ namespace Back.Services
                     {
                         Id = p.User.Id,
                         Email = p.User.Email,
-                        ProfileImage = new UploadFile
+                        ProfileImage = p.User.ProfileImage == null ? null : new UploadFile
                         {
                             Id = p.User.ProfileImage.Id,
-                            FilePath = p.User.ProfileImage.FilePath,
+                            FilePath = p.User.ProfileImage.FilePath
                         },
-                        ProfileImageId = p.User.ProfileImageId,
+                        ProfileImageId = p.User.ProfileImageId
                     },
                     Image = p.Image
                 })

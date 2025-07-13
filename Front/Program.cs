@@ -23,6 +23,11 @@ namespace Front
             builder.Services.AddScoped<CookieHandler>();
             builder.Services.AddScoped<UnauthorizedResponseHandler>();
 
+            builder.Services.AddHttpClient("BaseClient", client =>
+            {
+                client.BaseAddress = new Uri(apiBase);
+            });
+
             builder.Services.AddHttpClient("AuthorizedClient", client =>
             {
                 client.BaseAddress = new Uri(apiBase);
