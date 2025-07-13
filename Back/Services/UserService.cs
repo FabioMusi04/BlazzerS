@@ -74,6 +74,8 @@ namespace Back.Services
             }
 
             user.Password = "baldman";
+            user.RefreshToken = "baldman";
+
             return new UserResponse
             {
                 User = user,
@@ -341,6 +343,7 @@ namespace Back.Services
             context.SaveChanges();
 
             user.Password = "baldman";
+            user.RefreshToken = "baldman";
 
             return new UserResponse
             {
@@ -728,6 +731,7 @@ namespace Back.Services
             await context.SaveChangesAsync();
 
             currentUser.Password = "baldman";
+            currentUser.RefreshToken = "baldman";
 
             return new UserResponse
             {

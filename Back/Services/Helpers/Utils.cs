@@ -1,23 +1,51 @@
 ﻿using Back.Services.AppwriteIO;
 using Ganss.Xss;
+using Microsoft.IdentityModel.Tokens;
 using Models;
 using Models.enums;
 using Models.http;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 
 namespace Back.Services.Helpers
 {
     public static class Utils
     {
+
+        private static readonly JwtSecurityTokenHandler tokenHandler = new();
+
         public static string? GetJwt(HttpContext httpContext)
         {
             if (httpContext.Request.Cookies.TryGetValue("access_token", out var token))
             {
-                return token;
+                try
+                {
+                    ClaimsPrincipal principal = tokenHandler.ValidateToken(token, new TokenValidationParameters
+                    {
+                        ValidateIssuerSigningKey = true,
+                        IssuerSigningKey = new SymmetricSecurityKey(
+                            System.Text.Encoding.UTF8.GetBytes("baldman_eroe_notturno_gey_che_combatte_contro_gli_etero")
+                        ),
+                        ValidateIssuer = false,    // Set to true and specify ValidIssuer if needed
+                        ValidateAudience = false,  // Set to true and specify ValidAudience if needed
+                        ValidateLifetime = true,   // ✅ Checks `exp`
+                        ClockSkew = TimeSpan.Zero  // Optional: disable 5 min leeway
+                    }, out _);
+
+                    return token;
+                }
+                catch (SecurityTokenExpiredException)
+                {
+                    Console.WriteLine("JWT expired.");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("JWT invalid: " + ex.Message);
+                }
             }
 
             return null;
         }
-
 
         public static async Task GenerateNewVerificationToken(User user, ApplicationDbContext context, IConfiguration configuration, IEmailService emailService)
         {

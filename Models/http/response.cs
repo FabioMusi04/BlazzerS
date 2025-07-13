@@ -22,6 +22,7 @@ namespace Models.http
     public class LoginResponse : Response
     {
         public string? Token { get; set; } = default!;
+        public string? RefreshToken { get; set; } = default!;
         public User User { get; set; } = default!;
     }
 

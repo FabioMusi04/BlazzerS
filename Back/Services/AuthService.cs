@@ -13,6 +13,7 @@ namespace Back.Services
     {
         public Task<LoginResponse> LoginAsync(string email, string password, ApplicationDbContext context, HttpContext httpContext);
         public Task<RegisterResponse> RegisterAsync(RegisterRequest request, ApplicationDbContext context);
+        public Task<LoginResponse> RefreshAsync(ApplicationDbContext context, HttpContext httpContext);
         public Task<Response> LogoutAsync(string? deviceId, HttpContext httpContext, ApplicationDbContext context);
         public Task<Response> LogoutAllAsync(HttpContext httpContext, ApplicationDbContext context);
     }
@@ -46,6 +47,9 @@ namespace Back.Services
             string jti = Guid.NewGuid().ToString();
 
             string token = GenerateJwtToken(user, jti);
+            string refreshToken = GenerateRefreshToken();
+            user.RefreshToken = refreshToken;
+
             StringValues userAgent = httpContext.Request.Headers.UserAgent;
             string userAgentValue = userAgent.ToString() ?? "unknown";
             string deviceId = httpContext.Request.Headers["X-Device-ID"].ToString() ?? "unknown";
@@ -84,11 +88,13 @@ namespace Back.Services
             await context.SaveChangesAsync();
 
             user.Password = "baldman";
+            user.RefreshToken = "baldman";
 
             return new LoginResponse
             {
                 User = user,
                 Token = token,
+                RefreshToken = refreshToken,
                 Message = "Login successful.",
                 StatusCode = (int)System.Net.HttpStatusCode.OK
             };
@@ -129,6 +135,125 @@ namespace Back.Services
                 UserId = user.Id,
             };
         }
+
+        public async Task<LoginResponse> RefreshAsync(ApplicationDbContext context, HttpContext httpContext)
+        {
+            httpContext.Request.Cookies.TryGetValue("access_token", out var jwt);
+            if (string.IsNullOrEmpty(jwt))
+            {
+                return new LoginResponse
+                {
+                    StatusCode = (int)System.Net.HttpStatusCode.Unauthorized,
+                    Message = "Authorization header is missing or invalid."
+                };
+            }
+            JwtSecurityTokenHandler handler = new();
+
+            if (!handler.CanReadToken(jwt))
+            {
+                return new LoginResponse
+                {
+                    StatusCode = (int)System.Net.HttpStatusCode.BadRequest,
+                    Message = "JWT not valid."
+                };
+            }
+
+            JwtSecurityToken token = handler.ReadJwtToken(jwt);
+
+
+            Claim? userIdClaim = token.Claims.FirstOrDefault(c => c.Type == "nameid");
+            if (userIdClaim == null)
+            {
+                return new LoginResponse
+                {
+                    StatusCode = (int)System.Net.HttpStatusCode.BadRequest,
+                    Message = "JWT does not contain user ID."
+                };
+            }
+
+            if (!int.TryParse(userIdClaim.Value, out int userId))
+            {
+                return new LoginResponse
+                {
+                    StatusCode = (int)System.Net.HttpStatusCode.BadRequest,
+                    Message = "JWT user ID is not a valid integer."
+                };
+            }
+
+            User? user = context.Users.FirstOrDefault(u => u.Id == userId);
+            if (user == null)
+            {
+                return new LoginResponse
+                {
+                    StatusCode = (int)System.Net.HttpStatusCode.Unauthorized,
+                    Message = "User not found."
+                };
+            }
+
+            httpContext.Request.Cookies.TryGetValue("refresh_token", out var old_token);
+
+            if (user.RefreshToken != old_token)
+            {
+                return new LoginResponse
+                {
+                    StatusCode = (int)System.Net.HttpStatusCode.Unauthorized,
+                    Message = "Refresh token is invalid or expired."
+                };
+            }
+
+            string jti = Guid.NewGuid().ToString();
+            string newToken = GenerateJwtToken(user, jti, 10080);
+            string refreshToken = GenerateRefreshToken();
+
+            user.RefreshToken = refreshToken;
+
+            StringValues userAgent = httpContext.Request.Headers.UserAgent;
+            string userAgentValue = userAgent.ToString() ?? "unknown";
+            string deviceId = httpContext.Request.Headers["X-Device-ID"].ToString() ?? "unknown";
+            string ip = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            var existingSession = await context.UserSessions
+                .FirstOrDefaultAsync(s =>
+                    s.UserId == user.Id &&
+                    s.DeviceId == deviceId);
+
+            if (existingSession != null)
+            {
+                existingSession.LastAccessedAt = DateTime.UtcNow;
+                existingSession.IPAddress = ip;
+                existingSession.UserAgent = userAgentValue;
+                existingSession.Jti = jti;
+
+                context.UserSessions.Update(existingSession);
+            }
+            else
+            {
+                UserSession newSession = new()
+                {
+                    UserId = user.Id,
+                    IPAddress = ip,
+                    UserAgent = userAgentValue,
+                    LastAccessedAt = DateTime.UtcNow,
+                    CreatedAt = DateTime.UtcNow,
+                    DeviceId = deviceId,
+                    Jti = jti,
+                };
+                await context.UserSessions.AddAsync(newSession);
+            }
+            await context.SaveChangesAsync();
+
+            user.Password = "baldman";
+            user.RefreshToken = "baldman";
+
+            return new LoginResponse
+            {
+                User = user,
+                Token = newToken,
+                RefreshToken = refreshToken,
+                Message = "Login successful.",
+                StatusCode = (int)System.Net.HttpStatusCode.OK
+            };
+        }
+
         public async Task<Response> LogoutAsync(string? devicePassedId, HttpContext httpContext, ApplicationDbContext context)
         {
             string? jwt = Utils.GetJwt(httpContext);
@@ -217,7 +342,7 @@ namespace Back.Services
             };
         }
 
-        private static string GenerateJwtToken(User user, string jti)
+        private static string GenerateJwtToken(User user, string jti, int duration = 1)
         {
             byte[] key = new System.Text.UTF8Encoding().GetBytes("baldman_eroe_notturno_gey_che_combatte_contro_gli_etero");
             Claim[] claims =
@@ -233,7 +358,7 @@ namespace Back.Services
             SecurityTokenDescriptor tokenDescriptor = new()
             {
                 Subject = new ClaimsIdentity(claims),
-                Expires = DateTime.UtcNow.AddHours(2),
+                Expires = DateTime.UtcNow.AddMinutes(duration),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
             };
 
@@ -242,5 +367,14 @@ namespace Back.Services
             return tokenHandler.WriteToken(token);
         }
 
+        private static string GenerateRefreshToken()
+        {
+            byte[] randomNumber = new byte[32];
+            using (var rng = System.Security.Cryptography.RandomNumberGenerator.Create())
+            {
+                rng.GetBytes(randomNumber);
+            }
+            return Convert.ToBase64String(randomNumber);
+        }
     }
 }

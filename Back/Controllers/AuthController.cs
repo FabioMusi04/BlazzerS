@@ -1,7 +1,6 @@
 ﻿using Back.Services;
 using Microsoft.AspNetCore.Mvc;
 using Models.http;
-using System.Collections.Concurrent;
 
 namespace Back.Controllers
 {
@@ -13,50 +12,19 @@ namespace Back.Controllers
         private readonly IAuthService _authService = authService;
         private readonly ApplicationDbContext context = context;
 
-        // Configurazione rate limit
-        private static readonly ConcurrentDictionary<string, (int Attempts, DateTime? BlockedUntil)> _loginAttempts = new();
-        private const int MaxAttempts = 5;
-        private static readonly TimeSpan BlockDuration = TimeSpan.FromMinutes(10);
-
         [HttpPost("login")]
         public async Task<LoginResponse> Login(LoginRequest request)
         {
             _logger.LogInformation("Login request received for user: {Username}", request.Email);
-
-            string key = request.Email.ToLowerInvariant();
-            var now = DateTime.UtcNow;
-
-            // Controllo blocco
-            if (_loginAttempts.TryGetValue(key, out var entry) && entry.BlockedUntil.HasValue && entry.BlockedUntil > now)
-            {
-                return new LoginResponse
-                {
-                    StatusCode = StatusCodes.Status429TooManyRequests,
-                    Message = $"Troppi tentativi falliti. Riprova dopo le {entry.BlockedUntil.Value:HH:mm:ss} UTC."
-                };
-            }
 
             HttpContext httpContext = this.HttpContext;
             LoginResponse response = await _authService.LoginAsync(request.Email, request.Password, context, httpContext);
 
             if (response.StatusCode != (int)System.Net.HttpStatusCode.OK)
             {
-                // Incrementa tentativi falliti
-                int attempts = entry.Attempts + 1;
-                DateTime? blockedUntil = null;
-                if (attempts >= MaxAttempts)
-                {
-                    blockedUntil = now.Add(BlockDuration);
-                    attempts = 0; // resetta tentativi dopo blocco
-                }
-                _loginAttempts[key] = (attempts, blockedUntil);
-
                 _logger.LogWarning("Login failed for user: {Username}. Status code: {StatusCode}, Message: {Message}", request.Email, response.StatusCode, response.Message);
                 return response;
             }
-
-            // Login riuscito: resetta tentativi
-            _loginAttempts.TryRemove(key, out _);
 
             CookieOptions cookieOptions = new()
             {
@@ -67,6 +35,7 @@ namespace Back.Controllers
             };
 
             Response.Cookies.Append("access_token", response?.Token, cookieOptions);
+            Response.Cookies.Append("refresh_token", response?.RefreshToken, cookieOptions);
 
             response.Token = null;
 
@@ -79,6 +48,33 @@ namespace Back.Controllers
             _logger.LogInformation("Register request received for user: {Email}", request.Email);
 
             return _authService.RegisterAsync(request, context);
+        }
+
+        [HttpPost("refresh")]
+        public async Task<LoginResponse> Refresh()
+        {
+            HttpContext httpContext = this.HttpContext;
+            LoginResponse response = await _authService.RefreshAsync(context, httpContext);
+
+            if (response.StatusCode != (int)System.Net.HttpStatusCode.OK)
+            {
+                _logger.LogWarning("Refresh failed. Status code: {StatusCode}, Message: {Message}", response.StatusCode, response.Message);
+                return response;
+            }
+
+            CookieOptions cookieOptions = new()
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.None,
+                Expires = DateTime.UtcNow.AddMinutes(15)
+            };
+
+            Response.Cookies.Append("access_token", response?.Token, cookieOptions);
+            Response.Cookies.Append("refresh_token", response?.RefreshToken, cookieOptions);
+
+            response.Token = null;
+            return response;
         }
 
         [HttpPost("logout/{deviceId?}")]

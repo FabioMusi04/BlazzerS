@@ -334,6 +334,10 @@ namespace Front.Services
                     $"page={request.Page}",
                     $"pageSize={request.PageSize}"
                 ];
+                if (request.UserId.HasValue)
+                {
+                    queryParams.Add($"userId={request.UserId.Value}");
+                }
                 if (!string.IsNullOrWhiteSpace(request.SortField))
                 {
                     queryParams.Add($"sortField={Uri.EscapeDataString(request.SortField)}");

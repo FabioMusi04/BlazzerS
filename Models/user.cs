@@ -32,6 +32,8 @@ namespace Models
 
         public int? ProfileImageId = default!;
 
+        public string? RefreshToken { get; set; } = null;
+
         public UserRoleEnum Role { get; set; } = UserRoleEnum.User;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

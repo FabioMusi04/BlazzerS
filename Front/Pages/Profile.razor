@@ -148,6 +148,9 @@
 
 
 @code {
+
+
+
     [Parameter]
     public int? UserId { get; set; }
     private bool IsViewingOwnProfile => UserId == null || UserId <= 0;
@@ -363,6 +366,7 @@
         try
         {
             IsLoadingSessions = true;
+            UserSessionsPaginatedRequest.UserId = IsViewingOwnProfile ? UserData.Id : UserId;
             var sessionsResponse = await UserService.GetAllSessionsMe(UserSessionsPaginatedRequest);
             if (sessionsResponse.StatusCode is >= 200 and < 300)
             {
@@ -530,6 +534,7 @@
             if (response.StatusCode is >= 200 and < 300)
             {
                 Sessions = Sessions.Where(s => s.DeviceId != deviceId).ToList();
+                StateHasChanged();
             }
             else
             {
@@ -558,6 +563,10 @@
             if (response.StatusCode is >= 200 and < 300)
             {
                 Sessions.Clear();
+                StateHasChanged();
+
+                Navigation.NavigateTo("/login");
+                return;
             }
             else
             {

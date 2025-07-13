@@ -52,5 +52,4 @@ public class JwtRevocationMiddleware(RequestDelegate next)
 
         await _next(context);
     }
-
 }
