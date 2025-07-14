@@ -38,7 +38,6 @@ public class CustomAuthStateProvider(IHttpClientFactory factory, NavigationManag
         }
         catch
         {
-            _navigationManager.NavigateTo("/login");
             return new AuthenticationState(_anonymous);
         }
     }
