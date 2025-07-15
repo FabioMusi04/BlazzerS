@@ -19,6 +19,12 @@ namespace Models.http
         public int UserId { get; set; }
     }
 
+    public class _2FASetupResponse : Response
+    {
+        public string SecretKey { get; set; } = default!;
+        public string QrCodeImage { get; set; } = default!;
+    }
+
     public class LoginResponse : Response
     {
         public string? Token { get; set; } = default!;

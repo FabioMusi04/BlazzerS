@@ -1,8 +1,6 @@
 ﻿using Back.Services;
 using Microsoft.AspNetCore.Mvc;
 using Models.http;
-using System.Collections.Concurrent;
-using System.Text;
 using OtpNet;
 using QRCoder;
 
@@ -98,13 +96,17 @@ namespace Back.Controllers
         #region 2fa
 
         [HttpPost("2fa/setup")]
-        public IActionResult Setup2FA([FromBody] string email)
+        public _2FASetupResponse Setup2FA([FromBody] string email)
         {
             _logger.LogInformation("2FA setup requested for user: {Email}", email);
 
             var user = context.Users.FirstOrDefault(u => u.Email == email);
             if (user == null)
-                return NotFound(new { message = "Utente non trovato" });
+                return new _2FASetupResponse
+                {
+                    StatusCode = (int)System.Net.HttpStatusCode.NotFound,
+                    Message = "User not found"
+                };
 
             var key = KeyGeneration.GenerateRandomKey(20);
             var base32Key = Base32Encoding.ToString(key);
@@ -112,7 +114,7 @@ namespace Back.Controllers
             user.TwoFactorSecretKey = base32Key;
             context.SaveChanges();
 
-            var issuer = "Baltazar"; 
+            var issuer = "Baltazar";
             var otpUrl = $"otpauth://totp/{issuer}:{email}?secret={base32Key}&issuer={issuer}&digits=6";
 
             var qrGenerator = new QRCodeGenerator();
@@ -122,21 +124,27 @@ namespace Back.Controllers
 
             var qrBase64 = Convert.ToBase64String(qrBytes);
 
-            return Ok(new
+            return new _2FASetupResponse
             {
-                secretKey = base32Key,
-                qrCodeImage = $"data:image/png;base64,{qrBase64}"
-            });
+                StatusCode = (int)System.Net.HttpStatusCode.OK,
+                Message = "2FA setup successfully",
+                SecretKey = base32Key,
+                QrCodeImage = $"data:image/png;base64,{qrBase64}"
+            };
         }
 
         [HttpPost("2fa/verify")]
-        public IActionResult Verify2FA([FromBody] TwoFACodeRequest input)
+        public Response Verify2FA([FromBody] TwoFACodeRequest input)
         {
             _logger.LogInformation("2FA verify requested for user: {Email}", input.Email);
 
             var user = context.Users.FirstOrDefault(u => u.Email == input.Email);
             if (user == null || string.IsNullOrEmpty(user.TwoFactorSecretKey))
-                return BadRequest(new { message = "2FA non inizializzata per questo utente" });
+                return new Response
+                {
+                    StatusCode = (int)System.Net.HttpStatusCode.NotFound,
+                    Message = "User not found or 2FA not set up"
+                };
 
             var totp = new Totp(Base32Encoding.ToBytes(user.TwoFactorSecretKey));
             var isValid = totp.VerifyTotp(input.Code, out _, new VerificationWindow(2, 2));
@@ -144,38 +152,57 @@ namespace Back.Controllers
             if (!isValid)
             {
                 _logger.LogWarning("2FA code invalid for user: {Email}", input.Email);
-                return BadRequest(new { message = "Codice 2FA non valido" });
+                return new Response
+                {
+                    StatusCode = (int)System.Net.HttpStatusCode.BadRequest,
+                    Message = "Invalid 2FA code"
+                };
             }
 
             user.IsTwoFactorEnabled = true;
             context.SaveChanges();
 
             _logger.LogInformation("2FA attivata per utente: {Email}", input.Email);
-            return Ok(new { message = "2FA abilitata con successo" });
+            return new Response
+            {
+                StatusCode = (int)System.Net.HttpStatusCode.OK,
+                Message = "2FA enabled successfully"
+            };
         }
 
         [HttpPost("2fa/disable")]
-        public IActionResult Disable2FA([FromBody] Disable2FARequest request)
+        public Response Disable2FA([FromBody] string email)
         {
-            _logger.LogInformation("Richiesta disattivazione 2FA per: {Email}", request.Email);
+            _logger.LogInformation("Richiesta disattivazione 2FA per: {Email}", email);
 
-            var user = context.Users.FirstOrDefault(u => u.Email == request.Email);
+            var user = context.Users.FirstOrDefault(u => u.Email == email);
             if (user == null)
-                return NotFound(new { message = "Utente non trovato" });
+                return new Response
+                {
+                    StatusCode = (int)System.Net.HttpStatusCode.NotFound,
+                    Message = "User not found"
+                };
 
             if (!user.IsTwoFactorEnabled)
-                return BadRequest(new { message = "La 2FA non è attiva per questo utente" });
+                return new Response
+                {
+                    StatusCode = (int)System.Net.HttpStatusCode.BadRequest,
+                    Message = "2FA is not enabled for this user"
+                };
 
             user.IsTwoFactorEnabled = false;
             user.TwoFactorSecretKey = null;
 
             context.SaveChanges();
 
-            _logger.LogInformation("2FA disabilitata per: {Email}", request.Email);
+            _logger.LogInformation("2FA disabilitata per: {Email}", email);
 
-            return Ok(new { message = "2FA disattivata con successo" });
+            return new Response
+            {
+                StatusCode = (int)System.Net.HttpStatusCode.OK,
+                Message = "2FA disabilitated succesfully"
+            };
         }
-
         #endregion
     }
 }

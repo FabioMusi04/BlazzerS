@@ -8,11 +8,33 @@
 @inject EmailVerificationTokenService tokenVerificationService
 @inject NavigationManager Navigation
 @inject CustomAuthStateProvider authStateProvider
+@inject _2FAService _2FAService
 
 <div class="min-h-screen flex items-center justify-center bg-gray-800 px-4">
     <Alert AlertData="@AlertData" OnDismissed="@(() => AlertData.IsVisible = false)" />
     <Alert AlertData="@AlertData2" OnDismissed="@(() => AlertData2.IsVisible = false)" />
     <LoginForm OnLogin="HandleLogin" />
+
+    @if (IsVisible)
+    {
+        <div class="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
+            <div class="bg-gray-900 p-6 rounded-lg shadow-lg max-w-sm w-full">
+                <h3 class="text-lg font-semibold text-white mb-4">Two-Factor Authentication</h3>
+                <p class="text-sm text-gray-300 mb-3">Enter the 6-digit code from your authenticator app:</p>
+
+                <input @bind="TwoFACode"
+                       maxlength="6"
+                       class="w-full p-2 mb-4 border border-gray-700 rounded bg-gray-800 text-white" />
+
+                <div class="flex justify-end space-x-2">
+                    <button @onclick="Verify2FACode"
+                            class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">
+                        Verify
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
 </div>
 
 @code {
@@ -20,6 +42,9 @@
     private int userId = -1;
     private AlertModel AlertData = new();
     private AlertModel AlertData2 = new();
+    private string TwoFACode = "";
+    private bool IsVisible = false;
+    private User UserData;
 
     private async Task HandleLogin(LoginFormModel model)
     {
@@ -38,10 +63,19 @@
 
             await authStateProvider.ForceAuthenticationStateRefreshAsync();
 
-            if (result.User.Role == UserRoleEnum.Admin)
-                Navigation.NavigateTo("/dashboard");
+            if (result.User.IsTwoFactorEnabled)
+            {
+                UserData = result.User;
+                IsVisible = true;
+                return;
+            } 
             else
-                Navigation.NavigateTo("/home");
+            {
+                if (result.User.Role == UserRoleEnum.Admin)
+                    Navigation.NavigateTo("/dashboard");
+                else
+                    Navigation.NavigateTo("/home");
+            }
         }
         else
         {
@@ -72,6 +106,40 @@
                     OnCancel = EventCallback.Factory.Create(this, () => AlertData2.IsVisible = false)
                 };
             }
+        }
+    }
+
+    private async Task Verify2FACode()
+    {
+        var response = await _2FAService.VerifyCodeAsync(TwoFACode, UserData.Email);
+
+        if (response.StatusCode >= 200 && response.StatusCode < 300)
+        {
+            IsVisible = false;
+            AlertData = new AlertModel
+            {
+                IsVisible = true,
+                Style = AlertTypeEnum.Information,
+                Message = "2FA verified successfully!",
+                Title = "Success",
+                Position = AlertStylePositionEnum.BottomRight
+            };
+
+            if (UserData.Role == UserRoleEnum.Admin)
+                    Navigation.NavigateTo("/dashboard");
+                else
+                    Navigation.NavigateTo("/home");
+        }
+        else
+        {
+            AlertData = new AlertModel
+            {
+                IsVisible = true,
+                Style = AlertTypeEnum.Danger,
+                Message = response.Message,
+                Title = "2FA Failed",
+                Position = AlertStylePositionEnum.Center
+            };
         }
     }
 

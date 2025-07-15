@@ -4,6 +4,7 @@
 @inject UserService UserService
 @inject AuthService AuthService
 @inject PostService PostService
+@inject _2FAService _2FAService
 @inject IJSRuntime JSRuntime
 
 <PageTitle>Profile</PageTitle>
@@ -109,6 +110,75 @@
                         </div>
                     }
                 </div>
+
+                <div class="bg-gray-800 rounded-2xl shadow p-6">
+                    <h2 class="text-xl font-semibold mb-4">Two-Factor Authentication (2FA)</h2>
+
+                    @if (UserData == null)
+                    {
+                        <p class="text-red-400">User data not loaded yet...</p>
+                    }
+                    else if (UserData.IsTwoFactorEnabled)
+                    {
+                        <p class="text-green-400 mb-4">2FA is currently <strong>enabled</strong>.</p>
+                        <button class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-white mb-4"
+                                @onclick="Disable2FA"
+                                disabled="@IsProcessing">
+                            @if (IsProcessing)
+                            {
+                                <span class="animate-spin">⏳</span>
+                                <span>Disabling...</span>
+                            }
+                            else
+                            {
+                                <span>Disable 2FA</span>
+                            }
+                        </button>
+                    }
+                    else
+                    {
+                        <p class="text-yellow-400 mb-4">2FA is currently <strong>disabled</strong>.</p>
+                        <button class="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded text-white mb-4"
+                                @onclick="Generate2FASetup"
+                                disabled="@IsProcessing">
+                            @if (IsProcessing)
+                            {
+                                <span class="animate-spin">⏳</span>
+                                <span>Generating...</span>
+                            }
+                            else
+                            {
+                                <span>Enable 2FA</span>
+                            }
+                        </button>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(SetupQRCodeUrl))
+                    {
+                        <div class="mb-4">
+                            <p class="text-sm text-gray-300">Scan the QR code with Google Authenticator or similar app:</p>
+                            <img src="@SetupQRCodeUrl" class="my-3 border border-gray-600 rounded-lg max-w-xs" />
+                            <input @bind="TwoFATokenInput"
+                                   placeholder="Enter 6-digit code"
+                                   class="bg-gray-700 border border-gray-600 p-3 rounded w-full" />
+                            <button class="mt-2 w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded"
+                                    @onclick="Validate2FAToken"
+                                    disabled="@IsProcessing">
+                                @if (IsProcessing)
+                                {
+                                    <span class="animate-spin">⏳</span>
+                                    <span>Validating...</span>
+                                }
+                                else
+                                {
+                                    <span>Confirm and Enable 2FA</span>
+                                }
+                            </button>
+                        </div>
+                    }
+                </div>
+
+
             }
         </div>
 
@@ -149,12 +219,18 @@
 
 @code {
 
+
+
     [Parameter]
     public int? UserId { get; set; }
     private bool IsViewingOwnProfile => UserId == null || UserId <= 0;
 
     User? UserData = null;
     string? ProfilePictureUrl = null;
+
+    private string? SetupQRCodeUrl;
+    private string TwoFATokenInput = "";
+
 
     List<Post> Posts = new();
     List<UserSession> Sessions = new();
@@ -269,6 +345,101 @@
             IsLoadingUser = false;
         }
     }
+
+    private async Task Generate2FASetup()
+    {
+        try
+        {
+            IsProcessing = true;
+            var response = await _2FAService.GenerateQrCodeAsync(UserData.Email);
+            if (response.StatusCode is >= 200 and < 300)
+            {
+                SetupQRCodeUrl = response.QrCodeImage;
+            }
+            else
+            {
+                AlertData2 = new()
+                {
+                    IsVisible = true,
+                    Style = AlertTypeEnum.Danger,
+                    Message = "Failed to generate 2FA QR code.",
+                    Title = "Error",
+                    Position = AlertStylePositionEnum.BottomRight
+                };
+            }
+        }
+        finally
+        {
+            IsProcessing = false;
+        }
+    }
+
+    private async Task Validate2FAToken()
+    {
+        try
+        {
+            IsProcessing = true;
+            var response = await _2FAService.VerifyCodeAsync(TwoFATokenInput, UserData.Email);
+            if (response.StatusCode is >= 200 and < 300)
+            {
+                SetupQRCodeUrl = null;
+                TwoFATokenInput = "";
+
+                UserData.IsTwoFactorEnabled = true;
+
+                AlertData2 = new()
+                {
+                    IsVisible = true,
+                    Style = AlertTypeEnum.Information,
+                    Message = "2FA successfully enabled.",
+                    Title = "Success",
+                    Position = AlertStylePositionEnum.BottomRight
+                };
+            }
+            else
+            {
+                AlertData2 = new()
+                {
+                    IsVisible = true,
+                    Style = AlertTypeEnum.Danger,
+                    Message = "Invalid token. Please try again.",
+                    Title = "Validation Failed",
+                    Position = AlertStylePositionEnum.BottomRight
+                };
+            }
+        }
+        finally
+        {
+            IsProcessing = false;
+        }
+    }
+
+    private async Task Disable2FA()
+    {
+        try
+        {
+            IsProcessing = true;
+            var response = await _2FAService.DisableAsync(UserData.Email);
+            if (response.StatusCode is >= 200 and < 300)
+            {
+                UserData.IsTwoFactorEnabled = false;
+
+                AlertData2 = new()
+                {
+                    IsVisible = true,
+                    Style = AlertTypeEnum.Information,
+                    Message = "2FA disabled.",
+                    Title = "Disabled",
+                    Position = AlertStylePositionEnum.BottomRight
+                };
+            }
+        }
+        finally
+        {
+            IsProcessing = false;
+        }
+    }
+
 
     private async Task LoadUserDataById(int? userId)
     {
