@@ -3,9 +3,9 @@ using System.Net.Http.Json;
 
 namespace Front.Services
 {
-    public class EmailVerificationTokenService(HttpClient http)
+    public class EmailVerificationTokenService(IHttpClientFactory factory)
     {
-        private readonly HttpClient _http = http;
+        private readonly HttpClient _http = factory.CreateClient("AuthorizedClient");
 
         public async Task<VerificationTokenResponse?> VerifyTokenAsync(string token)
         {

@@ -1,17 +1,19 @@
-﻿using Microsoft.AspNetCore.Components.Authorization;
+﻿using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Authorization;
 using Models.http;
 using System.Net.Http.Json;
 using System.Security.Claims;
 
 namespace Front.Services;
 
-public class CustomAuthStateProvider(IHttpClientFactory factory) : AuthenticationStateProvider
+public class CustomAuthStateProvider(IHttpClientFactory factory, NavigationManager navigationManager) : AuthenticationStateProvider
 {
     private readonly ClaimsPrincipal _anonymous = new(new ClaimsIdentity());
-    private readonly HttpClient _httpClient = factory.CreateClient("AuthorizedClient");
+    private readonly NavigationManager _navigationManager = navigationManager;
 
     public override async Task<AuthenticationState> GetAuthenticationStateAsync()
     {
+        HttpClient _httpClient = factory.CreateClient("AuthorizedClient");
         try
         {
             var userResponse = await _httpClient.GetFromJsonAsync<UserResponse>("api/User/me");

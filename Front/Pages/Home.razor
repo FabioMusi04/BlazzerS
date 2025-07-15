@@ -87,7 +87,7 @@
             <h2 class="text-2xl font-semibold text-indigo-400 mb-5">Create a New Post</h2>
 
             <textarea class="w-full resize-none mb-4 px-4 py-3 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      placeholder="What's on your mind?" rows="5" @bind="NewPostContent" />
+                      placeholder="What's on your mind?" rows="5" @bind="NewPostContent" ></textarea>
 
             <div class="mb-4">
                 <label for="fileInput" class="block mb-2 text-sm font-medium text-gray-300">Upload Image (optional)</label>
@@ -109,9 +109,11 @@
                     Cancel
                 </button>
 
-                <button class="px-5 py-2 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-500 transition disabled:opacity-40 disabled:cursor-not-allowed"
-                        @onclick="CreateNewPost" disabled="@IsPostButtonDisabled">
-                    Post
+                <button class="px-5 py-2 text-white text-sm rounded-md transition disabled:opacity-50 disabled:cursor-not-allowed
+                   @(IsSaving ? "bg-indigo-400" : "bg-indigo-600 hover:bg-indigo-500")"
+                        @onclick="CreateNewPost"
+                        disabled="@IsSaving">
+                    @(IsSaving ? "Posting..." : "Post")
                 </button>
             </div>
         </div>
@@ -138,6 +140,24 @@
 
     private ElementReference PostObserverRef;
     private bool _initialized = false;
+
+    private string _newPostContent = string.Empty;
+
+    private string NewPostContent
+    {
+        get => _newPostContent;
+        set
+        {
+            if (_newPostContent != value)
+            {
+                _newPostContent = value;
+                StateHasChanged(); // Tell Blazor to re-render and re-check IsPostButtonDisabled
+            }
+        }
+    }
+
+    private bool IsPostButtonDisabled => string.IsNullOrWhiteSpace(NewPostContent);
+
 
     [JSInvokable]
     public async Task OnScrollReachedBottom()
@@ -279,12 +299,8 @@
 
     private bool ShowCreatePostModal = false;
 
-    private string NewPostContent = string.Empty;
-
     private IBrowserFile? UploadedImageFile;
     private string? UploadedImagePreview;
-
-    private bool IsPostButtonDisabled => string.IsNullOrWhiteSpace(NewPostContent);
 
     private void ToggleComments(int postId)
     {

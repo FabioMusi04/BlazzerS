@@ -63,6 +63,32 @@ namespace Front.Services
             }
         }
 
+        public async Task<LoginResponse> RefreshAsync()
+        {
+            try
+            {
+                HttpResponseMessage response = await _http.PostAsync("api/Auth/refresh", null);
+                LoginResponse? refreshResponse = await response.Content.ReadFromJsonAsync<LoginResponse>();
+                if (response.IsSuccessStatusCode && refreshResponse != null)
+                {
+                    return refreshResponse;
+                }
+                return new LoginResponse
+                {
+                    Message = refreshResponse?.Message ?? "Refresh failed.",
+                    StatusCode = refreshResponse?.StatusCode ?? (int)response.StatusCode
+                };
+            }
+            catch (Exception ex)
+            {
+                return new LoginResponse
+                {
+                    Message = $"Unexpected error during refresh: {ex.Message}",
+                    StatusCode = 500
+                };
+            }
+        }
+
         public async Task<Response> LogoutAsync(string? deviceId = null)
         {
             try

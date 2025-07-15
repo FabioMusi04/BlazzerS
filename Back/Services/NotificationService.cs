@@ -146,7 +146,7 @@ namespace Back.Services
                     .Take(request.PageSize)
                     .Include(n => n.User)
                     .AsEnumerable()
-                    .Select(n => { n.User.Password = "baldman"; return n; })
+                    .Select(n => { n.User.Password = "baldman"; n.User.RefreshToken = "baldman"; return n; })
                 ];
 
                 totalCount = context.Notifications.Count();

@@ -4,7 +4,6 @@
 
 ### Frontend (Blazor WASM - PWA)
 - Blazor WebAssembly con supporto offline (Progressive Web App)
-- Leaflet.js (integrazione via JS interop)
 - JWT per autenticazione custom
 
 ### Backend (ASP.NET Core)
@@ -13,8 +12,6 @@
 - Entity Framework Core per accesso e migrazioni database
 - Swagger per documentazione API
 - Job scheduler interno per notifiche e task ricorrenti
-- PDF export come `byte[]` da endpoint API
-
 ---
 
 ## 🖼️ Frontend – Blazor WebAssembly (PWA)
@@ -30,16 +27,11 @@ wwwroot/     → Manifest e configurazione PWA
 ```
 
 ### 🔐 Autenticazione Custom (JWT)
-- JWT salvato nel `localStorage`
+- JWT salvato nei cookie del browser
 - `CustomAuthProvider` implementa `AuthenticationStateProvider`
 - **Login:** chiamata API backend, salvataggio token
 - **HttpClient:** configurato per includere automaticamente JWT nelle richieste
 - **Logout:** rimozione token e reset dello stato utente
-
-### 🗺️ Integrazione Leaflet.js
-- Integrazione tramite JavaScript interop (`IJSRuntime`)
-- Leaflet incluso da `wwwroot/js/leaflet.js`
-- Le richieste verso servizi mappa protetti usano header JWT
 
 ---
 
@@ -68,19 +60,6 @@ Sistema di scheduling integrato (o con Hangfire):
 - 🔔 **Push Notifications** – Invio notifiche verso client (PWA/mobile)
 - 📧 **Email Notification** – Email automatica per report/aggiornamenti
 
----
-
-## 🧾 PDF Export
-
-- Servizio genera PDF dinamici (report, mappe)
-- Endpoint API restituisce `byte[]` con header `application/pdf`
-- Frontend usa:
-```csharp
-JSRuntime.InvokeVoidAsync("saveAs", ...)
-````
-
----
-
 ## 🖼️ Appwrite – Gestione Bucket Immagini
 
 * Upload immagini da backend via SDK o chiamata REST
@@ -91,7 +70,7 @@ JSRuntime.InvokeVoidAsync("saveAs", ...)
 
 ## 🧱 Database & Entity Framework
 
-* Database: SQL Server / PostgreSQL
+* Database: PostgreSQL
 * Utilizzo di **Entity Framework Core**
 * Migrazioni gestite via CLI:
 
@@ -110,15 +89,12 @@ dotnet ef database update
 # Backend
 cd backend
 dotnet restore
-dotnet run
+dotnet run --launch-profile "https" 
 
 # Frontend (Blazor WASM)
 cd frontend
 dotnet restore
-dotnet run
-
-# Oppure build della PWA
-dotnet publish -c Release
+dotnet run --launch-profile "https"
 ```
 
 

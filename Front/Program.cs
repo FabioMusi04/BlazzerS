@@ -20,13 +20,21 @@ namespace Front
                 throw new InvalidOperationException("ApiBaseAddress configuration is missing or empty.");
             }
 
-            builder.Services.AddTransient<CookieHandler>()
-                .AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("AuthorizedClient"));
+            builder.Services.AddScoped<CookieHandler>();
+            builder.Services.AddScoped<UnauthorizedResponseHandler>();
+
+            builder.Services.AddHttpClient("BaseClient", client =>
+            {
+                client.BaseAddress = new Uri(apiBase);
+            });
 
             builder.Services.AddHttpClient("AuthorizedClient", client =>
             {
                 client.BaseAddress = new Uri(apiBase);
-            }).AddHttpMessageHandler<CookieHandler>();
+            })
+            .AddHttpMessageHandler<CookieHandler>()
+            .AddHttpMessageHandler<UnauthorizedResponseHandler>();
+
 
             builder.Services.AddScoped<EmailVerificationTokenService>();
             builder.Services.AddScoped<AuthService>();
@@ -36,7 +44,6 @@ namespace Front
             builder.Services.AddScoped<PostService>();
 
             builder.Services.AddAuthorizationCore();
-
             builder.Services.AddScoped<CustomAuthStateProvider>();
             builder.Services.AddScoped<AuthenticationStateProvider>(provider => provider.GetRequiredService<CustomAuthStateProvider>());
 
