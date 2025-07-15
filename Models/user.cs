@@ -40,5 +40,9 @@ namespace Models
 
         [ForeignKey(nameof(ProfileImageId))]
         public virtual UploadFile ProfileImage { get; set; } = default!;
+
+        // 2FA
+        public string? TwoFactorSecretKey { get; set; } 
+        public bool IsTwoFactorEnabled { get; set; }
     }
 }
